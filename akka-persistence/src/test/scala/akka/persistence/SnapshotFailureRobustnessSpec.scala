@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.persistence
@@ -58,10 +58,10 @@ object SnapshotFailureRobustnessSpec {
   }
 }
 
-class SnapshotFailureRobustnessSpec extends AkkaSpec(PersistenceSpec.config("leveldb", "SnapshotFailureRobustnessSpec", serialization = "off", extraConfig = Some(
+class SnapshotFailureRobustnessSpec extends PersistenceSpec(PersistenceSpec.config("leveldb", "SnapshotFailureRobustnessSpec", serialization = "off", extraConfig = Some(
   """
   akka.persistence.snapshot-store.local.class = "akka.persistence.SnapshotFailureRobustnessSpec$FailingLocalSnapshotStore"
-  """))) with PersistenceSpec with ImplicitSender {
+  """))) with ImplicitSender {
 
   import SnapshotFailureRobustnessSpec._
 
@@ -83,7 +83,7 @@ class SnapshotFailureRobustnessSpec extends AkkaSpec(PersistenceSpec.config("lev
         lPersistentActor ! Recover()
         expectMsgPF() {
           case (SnapshotMetadata(`persistenceId`, 1, timestamp), state) ⇒
-            state should be("blahonga")
+            state should ===("blahonga")
             timestamp should be > (0L)
         }
         expectMsg("kablama-2")

@@ -193,13 +193,6 @@ Watching Remote Actors
 Watching a remote actor is not different than watching a local actor, as described in
 :ref:`deathwatch-scala`.
 
-.. warning::
-
-  *Caveat:* Watching an ``ActorRef`` acquired with ``actorFor`` does not trigger
-  ``Terminated`` for lost connections. ``actorFor`` is deprecated in favor of 
-  ``actorSelection``. Acquire the ``ActorRef`` to watch with ``Identify`` and 
-  ``ActorIdentity`` as described in :ref:`actorSelection-scala`.
-
 Failure Detector
 ----------------
 
@@ -455,7 +448,7 @@ SSL can be used as the remote transport by adding ``akka.remote.netty.ssl``
 to the ``enabled-transport`` configuration section. See a description of the settings
 in the :ref:`remote-configuration-scala` section.
 
-The SSL support is implemented with Java Secure Socket Extension, please consult the offical
+The SSL support is implemented with Java Secure Socket Extension, please consult the official
 `Java Secure Socket Extension documentation <http://docs.oracle.com/javase/7/docs/technotes/guides/security/jsse/JSSERefGuide.html>`_
 and related resources for troubleshooting.
 

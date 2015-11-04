@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka
@@ -11,20 +11,11 @@ import java.util.Properties
 import akka.TestExtras.GraphiteBuildEvents
 import akka.TestExtras.JUnitFileReporting
 import akka.TestExtras.StatsDMetrics
-import akka.Unidoc.scaladocSettings
-import akka.Unidoc.unidocSettings
 import com.typesafe.sbt.S3Plugin.S3
 import com.typesafe.sbt.S3Plugin.s3Settings
 import com.typesafe.sbt.SbtMultiJvm.MultiJvmKeys.MultiJvm
-import com.typesafe.sbt.site.SphinxSupport
-import com.typesafe.sbt.site.SphinxSupport.Sphinx
-import com.typesafe.tools.mima.plugin.MimaKeys.binaryIssueFilters
-import com.typesafe.tools.mima.plugin.MimaKeys.previousArtifact
-import com.typesafe.tools.mima.plugin.MimaKeys.reportBinaryIssues
-import com.typesafe.tools.mima.plugin.MimaPlugin.mimaDefaultSettings
 import sbt.Keys._
 import sbt._
-import sbtunidoc.Plugin.UnidocKeys.unidoc
 
 object AkkaBuild extends Build {
   System.setProperty("akka.mode", "test") // Is there better place for this?
@@ -34,22 +25,22 @@ object AkkaBuild extends Build {
 
   override def buildLoaders = BuildLoader.transform(Sample.buildTransformer) :: Nil
 
-  val enableMiMa = false
+  val enableMiMa = true
 
-  lazy val buildSettings = Seq(
+  val parallelExecutionByDefault = false // TODO: enable this once we're sure it doesn not break things
+
+  lazy val buildSettings = Dependencies.Versions ++ Seq(
     organization        := "com.typesafe.akka",
-    version             := "2.4-SNAPSHOT",
-    scalaVersion        := Dependencies.Versions.scalaVersion,
-    crossScalaVersions  := Dependencies.Versions.crossScala
+    version             := "2.4-SNAPSHOT"
   )
 
   lazy val root = Project(
     id = "akka",
     base = file("."),
-    settings = parentSettings ++ Release.settings ++ unidocSettings ++
-      SphinxDoc.akkaSettings ++ Dist.settings ++ s3Settings ++ mimaSettings ++ scaladocSettings ++
-      GraphiteBuildEvents.settings ++ Protobuf.settings ++ Unidoc.settings(Seq(samples), Seq(remoteTests)) ++ Seq(
-      parallelExecution in GlobalScope := System.getProperty("akka.parallelExecution", "false").toBoolean,
+    settings = parentSettings ++ Release.settings ++
+      SphinxDoc.akkaSettings ++ Dist.settings ++ s3Settings ++
+      GraphiteBuildEvents.settings ++ Protobuf.settings ++ Seq(
+      parallelExecution in GlobalScope := System.getProperty("akka.parallelExecution", parallelExecutionByDefault.toString).toBoolean,
       Dist.distExclude := Seq(actorTests.id, docs.id, samples.id, osgi.id),
 
       S3.host in S3.upload := "downloads.typesafe.com.s3.amazonaws.com",
@@ -58,12 +49,10 @@ object AkkaBuild extends Build {
         val downloads = d / "downloads"
         val archivesPathFinder = downloads * s"*$v.zip"
         archivesPathFinder.get.map(file => (file -> ("akka/" + file.getName)))
-      },
-
-      validatePullRequest <<= (unidoc in Compile, SphinxSupport.generate in Sphinx in docs) map { (_, _) => }
+      }
     ),
-    aggregate = Seq(actor, testkit, actorTests, remote, remoteTests, camel, cluster, slf4j, agent,
-      persistence, persistenceTck, kernel, osgi, docs, contrib, samples, multiNodeTestkit)
+    aggregate = Seq(actor, testkit, actorTests, remote, remoteTests, camel, cluster, clusterMetrics, clusterTools, clusterSharding,
+      slf4j, agent, persistence, persistenceTck, kernel, osgi, docs, contrib, samples, multiNodeTestkit, benchJmh, typed)
   )
 
   lazy val akkaScalaNightly = Project(
@@ -71,9 +60,9 @@ object AkkaBuild extends Build {
     base = file("akka-scala-nightly"),
     // remove dependencies that we have to build ourselves (Scala STM)
     // samples don't work with dbuild right now
-    aggregate = Seq(actor, testkit, actorTests, remote, remoteTests, camel, cluster, slf4j,
-      persistence, persistenceTck, kernel, osgi, contrib, multiNodeTestkit)
-  )
+    aggregate = Seq(actor, testkit, actorTests, remote, remoteTests, camel, cluster, clusterMetrics, clusterTools, clusterSharding,
+      slf4j, persistence, persistenceTck, kernel, osgi, contrib, multiNodeTestkit, benchJmh, typed)
+  ).disablePlugins(ValidatePullRequest)
 
   lazy val actor = Project(
     id = "akka-actor",
@@ -86,6 +75,12 @@ object AkkaBuild extends Build {
     dependencies = Seq(actor)
   )
 
+  lazy val typed = Project(
+    id = "akka-typed-experimental",
+    base = file("akka-typed"),
+    dependencies = Seq(testkit % "compile;test->test")
+  )
+
   lazy val actorTests = Project(
     id = "akka-actor-tests",
     base = file("akka-actor-tests"),
@@ -95,8 +90,8 @@ object AkkaBuild extends Build {
   lazy val benchJmh = Project(
     id = "akka-bench-jmh",
     base = file("akka-bench-jmh"),
-    dependencies = Seq(actor, persistence, testkit).map(_ % "compile;compile->test")
-  )
+    dependencies = Seq(actor, persistence, testkit).map(_ % "compile;compile->test;provided->provided")
+  ).disablePlugins(ValidatePullRequest)
 
   lazy val remote = Project(
     id = "akka-remote",
@@ -122,6 +117,25 @@ object AkkaBuild extends Build {
     dependencies = Seq(remote, remoteTests % "test->test" , testkit % "test->test")
   ) configs (MultiJvm)
 
+  lazy val clusterMetrics = Project(
+    id = "akka-cluster-metrics",
+    base = file("akka-cluster-metrics"),
+    dependencies = Seq(cluster % "compile->compile;test->test;multi-jvm->multi-jvm", slf4j % "test->compile")
+  ) configs (MultiJvm)
+
+  lazy val clusterTools = Project(
+    id = "akka-cluster-tools",
+    base = file("akka-cluster-tools"),
+    dependencies = Seq(cluster % "compile->compile;test->test;multi-jvm->multi-jvm")
+  ) configs (MultiJvm)
+
+  lazy val clusterSharding = Project(
+    id = "akka-cluster-sharding",
+    base = file("akka-cluster-sharding"),
+    dependencies = Seq(cluster % "compile->compile;test->test;multi-jvm->multi-jvm",
+        persistence % "compile;test->provided", clusterTools)
+  ) configs (MultiJvm)
+
   lazy val slf4j = Project(
     id = "akka-slf4j",
     base = file("akka-slf4j"),
@@ -143,7 +157,7 @@ object AkkaBuild extends Build {
   lazy val persistenceTck = Project(
     id = "akka-persistence-experimental-tck",
     base = file("akka-persistence-tck"),
-    dependencies = Seq(persistence % "compile;test->test", testkit % "compile;test->test")
+    dependencies = Seq(persistence % "compile;provided->provided;test->test", testkit % "compile;test->test")
   )
 
   lazy val kernel = Project(
@@ -168,24 +182,27 @@ object AkkaBuild extends Build {
     id = "akka-docs",
     base = file("akka-docs"),
     dependencies = Seq(actor, testkit % "test->test",
-      remote % "compile;test->test", cluster, slf4j, agent, camel, osgi,
-      persistence % "compile;test->test", persistenceTck)
+      remote % "compile;test->test", cluster, clusterMetrics, slf4j, agent, camel, osgi,
+      persistence % "compile;provided->provided;test->test", persistenceTck,
+      typed % "compile;test->test")
   )
 
   lazy val contrib = Project(
     id = "akka-contrib",
     base = file("akka-contrib"),
-    dependencies = Seq(remote, remoteTests % "test->test", cluster, persistence)
+    dependencies = Seq(remote, remoteTests % "test->test", cluster, clusterTools, persistence % "compile;test->provided")
   ) configs (MultiJvm)
 
   lazy val samples = Project(
     id = "akka-samples",
     base = file("akka-samples"),
     settings = parentSettings ++ ActivatorDist.settings,
-    aggregate = if (!CommandLineOptions.aggregateSamples) Nil else
-      Seq(sampleCamelJava, sampleCamelScala, sampleClusterJava, sampleClusterScala, sampleFsmScala,
-        sampleHelloKernel, sampleMainJava, sampleMainScala, sampleMultiNodeScala, osgiDiningHakkersSampleMavenTest,
-        samplePersistenceJava, samplePersistenceScala, sampleRemoteJava, sampleRemoteScala)
+    // FIXME osgiDiningHakkersSampleMavenTest temporarily removed from aggregate due to #16703
+    aggregate = if (!Sample.CliOptions.aggregateSamples) Nil else
+      Seq(sampleCamelJava, sampleCamelScala, sampleClusterJava, sampleClusterScala, sampleFsmScala, sampleFsmJavaLambda,
+        sampleMainJava, sampleMainScala, sampleMainJavaLambda, sampleMultiNodeScala,
+        samplePersistenceJava, samplePersistenceScala, samplePersistenceJavaLambda,
+        sampleRemoteJava, sampleRemoteScala, sampleSupervisionJavaLambda)
   )
 
   lazy val sampleCamelJava = Sample.project("akka-sample-camel-java")
@@ -195,25 +212,27 @@ object AkkaBuild extends Build {
   lazy val sampleClusterScala = Sample.project("akka-sample-cluster-scala")
 
   lazy val sampleFsmScala = Sample.project("akka-sample-fsm-scala")
-
-  lazy val sampleHelloKernel = Sample.project("akka-sample-hello-kernel")
+  lazy val sampleFsmJavaLambda = Sample.project("akka-sample-fsm-java-lambda")
 
   lazy val sampleMainJava = Sample.project("akka-sample-main-java")
   lazy val sampleMainScala = Sample.project("akka-sample-main-scala")
+  lazy val sampleMainJavaLambda = Sample.project("akka-sample-main-java-lambda")
 
   lazy val sampleMultiNodeScala = Sample.project("akka-sample-multi-node-scala")
 
   lazy val samplePersistenceJava = Sample.project("akka-sample-persistence-java")
   lazy val samplePersistenceScala = Sample.project("akka-sample-persistence-scala")
+  lazy val samplePersistenceJavaLambda = Sample.project("akka-sample-persistence-java-lambda")
 
   lazy val sampleRemoteJava = Sample.project("akka-sample-remote-java")
   lazy val sampleRemoteScala = Sample.project("akka-sample-remote-scala")
+
+  lazy val sampleSupervisionJavaLambda = Sample.project("akka-sample-supervision-java-lambda")
 
   lazy val osgiDiningHakkersSampleMavenTest = Project(id = "akka-sample-osgi-dining-hakkers-maven-test",
     base = file("akka-samples/akka-sample-osgi-dining-hakkers-maven-test"),
     settings = Seq(
       publishArtifact := false,
-      reportBinaryIssues := (), // disable bin comp check
       // force publication of artifacts to local maven repo, so latest versions can be used when running maven tests
       compile in Compile <<=
         (publishM2 in actor, publishM2 in testkit, publishM2 in remote, publishM2 in cluster, publishM2 in osgi,
@@ -240,8 +259,7 @@ object AkkaBuild extends Build {
   lazy val baseSettings = Defaults.defaultSettings
 
   lazy val parentSettings = baseSettings ++ Seq(
-    publishArtifact := false,
-    reportBinaryIssues := () // disable bin comp check
+    publishArtifact := false
   )
 
   lazy val experimentalSettings = Seq(
@@ -284,12 +302,19 @@ object AkkaBuild extends Build {
     pomIncludeRepository := (_ => false) // do not leak internal repositories during staging
   )
 
-  lazy val defaultSettings = baseSettings ++ mimaSettings ++ resolverSettings ++ TestExtras.Filter.settings ++
+  private def allWarnings: Boolean = System.getProperty("akka.allwarnings", "false").toBoolean
+
+  lazy val defaultSettings = resolverSettings ++ TestExtras.Filter.settings ++
     Protobuf.settings ++ Seq(
     // compile options
-    scalacOptions in Compile ++= Seq("-encoding", "UTF-8", "-target:jvm-1.6", "-deprecation", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
-    javacOptions in compile ++= Seq("-encoding", "UTF-8", "-source", "1.6", "-target", "1.6", "-Xlint:unchecked", "-Xlint:deprecation"),
-    javacOptions in doc ++= Seq("-encoding", "UTF-8", "-source", "1.6"),
+    scalacOptions in Compile ++= Seq("-encoding", "UTF-8", "-target:jvm-1.8", "-feature", "-unchecked", "-Xlog-reflective-calls", "-Xlint"),
+    scalacOptions in Compile ++= (if (allWarnings) Seq("-deprecation") else Nil),
+    scalacOptions in Test := (scalacOptions in Test).value.filterNot(opt =>
+      opt == "-Xlog-reflective-calls" || opt.contains("genjavadoc")),
+    // -XDignore.symbol.file suppresses sun.misc.Unsafe warnings
+    javacOptions in compile ++= Seq("-encoding", "UTF-8", "-source", "1.8", "-target", "1.8", "-Xlint:unchecked", "-XDignore.symbol.file"),
+    javacOptions in compile ++= (if (allWarnings) Seq("-Xlint:deprecation") else Nil),
+    javacOptions in doc ++= Seq("-encoding", "UTF-8", "-source", "1.8"),
     incOptions := incOptions.value.withNameHashing(true),
 
     crossVersion := CrossVersion.binary,
@@ -320,7 +345,7 @@ object AkkaBuild extends Build {
      * Test settings
      */
 
-    parallelExecution in Test := System.getProperty("akka.parallelExecution", "false").toBoolean,
+    parallelExecution in Test := System.getProperty("akka.parallelExecution", parallelExecutionByDefault.toString).toBoolean,
     logBuffered in Test := System.getProperty("akka.logBufferedTests", "false").toBoolean,
 
     // show full stack traces and test case durations
@@ -331,41 +356,14 @@ object AkkaBuild extends Build {
 
     // -v Log "test run started" / "test started" / "test run finished" events on log level "info" instead of "debug".
     // -a Show stack traces and exception class name for AssertionErrors.
-    testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a"),
-
-    validatePullRequestTask,
-    validatePullRequest <<= validatePullRequest.dependsOn(test in Test),
-    // add reportBinaryIssues to validatePullRequest on minor version maintenance branch
-    validatePullRequest <<= validatePullRequest.dependsOn(reportBinaryIssues)
+    testOptions += Tests.Argument(TestFrameworks.JUnit, "-v", "-a")
   ) ++
     mavenLocalResolverSettings ++
     JUnitFileReporting.settings ++ StatsDMetrics.settings
 
-  val validatePullRequest = TaskKey[Unit]("validate-pull-request", "Additional tasks for pull request validation")
-  // the tasks that to run for validation is defined in defaultSettings
-  val validatePullRequestTask = validatePullRequest := ()
-
-  lazy val mimaIgnoredProblems = {
-    Seq(
-      // add filters here, see release-2.3 branch
-     )
-  }
-
-  lazy val mimaSettings = mimaDefaultSettings ++ Seq(
-    // MiMa
-    previousArtifact := None,
-    binaryIssueFilters ++= mimaIgnoredProblems
-  )
-
   def akkaPreviousArtifact(id: String): Def.Initialize[Option[sbt.ModuleID]] = Def.setting {
     if (enableMiMa) {
-      // Note: This is a little gross because we don't have a 2.3.0 release on Scala 2.11.x
-      // This should be expanded if there are more deviations.
-      val version: String =
-        scalaBinaryVersion.value match {
-          case "2.11" => "2.3.2"
-          case _ =>      "2.3.0"
-        }
+      val version: String = "2.3.11" // FIXME verify all 2.3.x versions
       val fullId = crossVersion.value match {
         case _ : CrossVersion.Binary => id + "_" + scalaBinaryVersion.value
         case _ : CrossVersion.Full => id + "_" + scalaVersion.value

@@ -1,21 +1,20 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.persistence
 
-import scala.collection.immutable.Seq
-import scala.concurrent.duration._
-import com.typesafe.config.Config
-import akka.actor._
-import akka.testkit.{ ImplicitSender, AkkaSpec }
-import akka.testkit.EventFilter
-import akka.testkit.TestProbe
 import java.util.concurrent.atomic.AtomicInteger
+
+import akka.actor._
+import akka.testkit.{ AkkaSpec, ImplicitSender, TestLatch, TestProbe }
+import com.typesafe.config.Config
+
+import scala.collection.immutable.Seq
+import scala.concurrent.Await
+import scala.concurrent.duration._
 import scala.util.Random
 import scala.util.control.NoStackTrace
-import akka.testkit.TestLatch
-import scala.concurrent.Await
 
 object PersistentActorSpec {
   final case class Cmd(data: Any)
@@ -370,19 +369,19 @@ object PersistentActorSpec {
   class DeferringWithPersistActor(name: String) extends ExamplePersistentActor(name) {
     val receiveCommand: Receive = {
       case Cmd(data) ⇒
-        defer("d-1") { sender() ! _ }
+        deferAsync("d-1") { sender() ! _ }
         persist(s"$data-2") { sender() ! _ }
-        defer("d-3") { sender() ! _ }
-        defer("d-4") { sender() ! _ }
+        deferAsync("d-3") { sender() ! _ }
+        deferAsync("d-4") { sender() ! _ }
     }
   }
   class DeferringWithAsyncPersistActor(name: String) extends ExamplePersistentActor(name) {
     val receiveCommand: Receive = {
       case Cmd(data) ⇒
-        defer(s"d-$data-1") { sender() ! _ }
+        deferAsync(s"d-$data-1") { sender() ! _ }
         persistAsync(s"pa-$data-2") { sender() ! _ }
-        defer(s"d-$data-3") { sender() ! _ }
-        defer(s"d-$data-4") { sender() ! _ }
+        deferAsync(s"d-$data-3") { sender() ! _ }
+        deferAsync(s"d-$data-4") { sender() ! _ }
     }
   }
   class DeferringMixedCallsPPADDPADPersistActor(name: String) extends ExamplePersistentActor(name) {
@@ -390,18 +389,18 @@ object PersistentActorSpec {
       case Cmd(data) ⇒
         persist(s"p-$data-1") { sender() ! _ }
         persistAsync(s"pa-$data-2") { sender() ! _ }
-        defer(s"d-$data-3") { sender() ! _ }
-        defer(s"d-$data-4") { sender() ! _ }
+        deferAsync(s"d-$data-3") { sender() ! _ }
+        deferAsync(s"d-$data-4") { sender() ! _ }
         persistAsync(s"pa-$data-5") { sender() ! _ }
-        defer(s"d-$data-6") { sender() ! _ }
+        deferAsync(s"d-$data-6") { sender() ! _ }
     }
   }
   class DeferringWithNoPersistCallsPersistActor(name: String) extends ExamplePersistentActor(name) {
     val receiveCommand: Receive = {
       case Cmd(data) ⇒
-        defer("d-1") { sender() ! _ }
-        defer("d-2") { sender() ! _ }
-        defer("d-3") { sender() ! _ }
+        deferAsync("d-1") { sender() ! _ }
+        deferAsync("d-2") { sender() ! _ }
+        deferAsync("d-3") { sender() ! _ }
     }
   }
 
@@ -510,7 +509,7 @@ object PersistentActorSpec {
 
 }
 
-abstract class PersistentActorSpec(config: Config) extends AkkaSpec(config) with PersistenceSpec with ImplicitSender {
+abstract class PersistentActorSpec(config: Config) extends PersistenceSpec(config) with ImplicitSender {
   import PersistentActorSpec._
 
   override protected def beforeEach() {

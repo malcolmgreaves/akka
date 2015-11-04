@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.routing
 
@@ -102,7 +102,10 @@ private[akka] class RoutedActorCell(
     _router = routerConfig.createRouter(system)
     routerConfig match {
       case pool: Pool ⇒
-        val nrOfRoutees = pool.nrOfInstances(system)
+        // must not use pool.nrOfInstances(system) for old (not re-compiled) custom routers
+        // for binary backwards compatibility reasons
+        val deprecatedNrOfInstances = pool.nrOfInstances
+        val nrOfRoutees = if (deprecatedNrOfInstances < 0) pool.nrOfInstances(system) else deprecatedNrOfInstances
         if (nrOfRoutees > 0)
           addRoutees(Vector.fill(nrOfRoutees)(pool.newRoutee(routeeProps, this)))
       case group: Group ⇒
@@ -160,6 +163,9 @@ private[akka] class RouterActor extends Actor {
     case RemoveRoutee(routee) ⇒
       cell.removeRoutee(routee, stopChild = true)
       stopIfAllRouteesRemoved()
+    case Terminated(child) ⇒
+      cell.removeRoutee(ActorRefRoutee(child), stopChild = false)
+      stopIfAllRouteesRemoved()
     case other if routingLogicController.isDefined ⇒
       routingLogicController.foreach(_.forward(other))
   }
@@ -185,9 +191,6 @@ private[akka] class RouterPoolActor(override val supervisorStrategy: SupervisorS
   }
 
   override def receive = ({
-    case Terminated(child) ⇒
-      cell.removeRoutee(ActorRefRoutee(child), stopChild = false)
-      stopIfAllRouteesRemoved()
     case AdjustPoolSize(change: Int) ⇒
       if (change > 0) {
         val newRoutees = Vector.fill(change)(pool.newRoutee(cell.routeeProps, context))

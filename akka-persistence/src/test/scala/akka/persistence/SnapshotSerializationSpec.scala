@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.persistence
@@ -64,7 +64,7 @@ object SnapshotSerializationSpec {
 
 }
 
-class SnapshotSerializationSpec extends AkkaSpec(PersistenceSpec.config("leveldb", "SnapshotSerializationSpec", serialization = "off", extraConfig = Some(
+class SnapshotSerializationSpec extends PersistenceSpec(PersistenceSpec.config("leveldb", "SnapshotSerializationSpec", serialization = "off", extraConfig = Some(
   """
     akka.actor {
       serializers {
@@ -74,7 +74,7 @@ class SnapshotSerializationSpec extends AkkaSpec(PersistenceSpec.config("leveldb
         "akka.persistence.SnapshotSerializationSpec$SerializationMarker" = my-snapshot
       }
     }
-  """))) with PersistenceSpec with ImplicitSender {
+  """))) with ImplicitSender {
 
   import SnapshotSerializationSpec._
   import SnapshotSerializationSpec.XXXXXXXXXXXXXXXXXXXX._
@@ -90,7 +90,7 @@ class SnapshotSerializationSpec extends AkkaSpec(PersistenceSpec.config("leveldb
       lPersistentActor ! Recover()
       expectMsgPF() {
         case (SnapshotMetadata(`persistenceId`, 0, timestamp), state) ⇒
-          state should be(new MySnapshot("blahonga"))
+          state should ===(new MySnapshot("blahonga"))
           timestamp should be > (0L)
       }
     }

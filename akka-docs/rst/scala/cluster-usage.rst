@@ -82,11 +82,13 @@ seed nodes in the existing cluster.
 If you don't configure seed nodes you need to join the cluster programmatically or manually.
 
 Manual joining can be performed by using ref:`cluster_jmx_scala` or :ref:`cluster_command_line_scala`.
-Joining programatically can be performed with ``Cluster(system).join``.
+Joining programmatically can be performed with ``Cluster(system).join``. Unsuccessful join attempts are
+automatically retried after the time period defined in configuration property ``retry-unsuccessful-join-after``.
+Retries can be disabled by setting the property to ``off``.
 
 You can join to any node in the cluster. It does not have to be configured as a seed node.
 Note that you can only join to an existing cluster member, which means that for bootstrapping some
-node must join itself.
+node must join itself,and then the following nodes could join them to make up a cluster.
 
 You may also use ``Cluster(system).joinSeedNodes`` to join programmatically,
 which is attractive when dynamically discovering other nodes at startup by using some external tool or API.
@@ -94,17 +96,19 @@ When using ``joinSeedNodes`` you should not include the node itself except for t
 supposed to be the first seed node, and that should be placed first in parameter to 
 ``joinSeedNodes``.
 
-Unsuccessful join attempts are automatically retried after the time period defined in 
-configuration property ``retry-unsuccessful-join-after``. When using ``seed-nodes`` this
-means that a new seed node is picked. When joining manually or programatically this means 
-that the last join request is retried. Retries can be disabled by setting the property to 
-``off``.
+Unsuccessful attempts to contact seed nodes are automatically retried after the time period defined in 
+configuration property ``seed-node-timeout``. Unsuccessful attempt to join a specific seed node is
+automatically retried after the configured ``retry-unsuccessful-join-after``. Retrying means that it
+tries to contact all seed nodes and then joins the node that answers first. The first node in the list
+of seed nodes will join itself if it cannot contact any of the other seed nodes within the
+configured ``seed-node-timeout``.
 
 An actor system can only join a cluster once. Additional attempts will be ignored.
 When it has successfully joined it must be restarted to be able to join another
-cluster or to join the same cluster again. It can use the same host name and port
-after the restart, but it must have been removed from the cluster before the join
-request is accepted.
+cluster or to join the same cluster again.It can use the same host name and port
+after the restart, when it come up as new incarnation of existing member in the cluster,
+trying to join in, then the existing one will be removed from the cluster and then it will
+be allowed to join.
 
 .. _automatic-vs-manual-downing-scala:
 
@@ -118,7 +122,7 @@ status of the unreachable member must be changed to 'Down'. Changing status to '
 can be performed automatically or manually. By default it must be done manually, using
 :ref:`cluster_jmx_scala` or :ref:`cluster_command_line_scala`.
 
-It can also be performed programatically with ``Cluster(system).down(address)``.
+It can also be performed programmatically with ``Cluster(system).down(address)``.
 
 You can enable automatic downing with configuration::
 
@@ -148,7 +152,7 @@ above.
 
 A more graceful exit can be performed if you tell the cluster that a node shall leave.
 This can be performed using :ref:`cluster_jmx_scala` or :ref:`cluster_command_line_scala`.
-It can also be performed programatically with ``Cluster(system).leave(address)``. 
+It can also be performed programmatically with ``Cluster(system).leave(address)``.
 
 Note that this command can be issued to any member in the cluster, not necessarily the
 one that is leaving. The cluster extension, but not the actor system or JVM, of the 
@@ -271,12 +275,29 @@ before the leader changes member status of 'Joining' members to 'Up'.
 .. includecode:: ../../../akka-samples/akka-sample-cluster-scala/src/main/resources/factorial.conf#role-min-nr-of-members
 
 You can start the actors in a ``registerOnMemberUp`` callback, which will 
-be invoked when the current member status is changed tp 'Up', i.e. the cluster
+be invoked when the current member status is changed to 'Up', i.e. the cluster
 has at least the defined number of members.
 
 .. includecode:: ../../../akka-samples/akka-sample-cluster-scala/src/main/scala/sample/cluster/factorial/FactorialFrontend.scala#registerOnUp
 
 This callback can be used for other things than starting actors.
+
+How To Cleanup when Member is Removed
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can do some clean up in a ``registerOnMemberRemoved`` callback, which will
+be invoked when the current member status is changed to 'Removed' or the cluster have been shutdown,i.e.
+terminate the actor system.
+
+For example, this is how to shut down the ``ActorSystem`` and thereafter exit the JVM:
+
+.. includecode:: ../../../akka-samples/akka-sample-cluster-scala/src/main/scala/sample/cluster/factorial/FactorialFrontend.scala#registerOnRemoved
+
+.. note::
+   Register a OnMemberRemoved callback on a cluster that have been shutdown, the callback will be invoked immediately on
+   the caller thread, otherwise it will be invoked later when the current member status changed to 'Removed'. You may
+   want to install some cleanup handling after the cluster was started up, but the cluster might already be shutting
+   down when you installing, and depending on the race is not healthy.
 
 Cluster Singleton
 ^^^^^^^^^^^^^^^^^
@@ -532,77 +553,9 @@ contains the full source code and instructions of how to run the **Router Exampl
 Cluster Metrics
 ^^^^^^^^^^^^^^^
 
-The member nodes of the cluster collects system health metrics and publishes that to other nodes and to 
-registered subscribers. This information is primarily used for load-balancing routers.
+The member nodes of the cluster can collect system health metrics and publish that to other cluster nodes
+and to the registered subscribers on the system event bus with the help of :doc:`cluster-metrics`.
 
-Hyperic Sigar
--------------
-
-The built-in metrics is gathered from JMX MBeans, and optionally you can use `Hyperic Sigar <http://www.hyperic.com/products/sigar>`_
-for a wider and more accurate range of metrics compared to what can be retrieved from ordinary MBeans.
-Sigar is using a native OS library. To enable usage of Sigar you need to add the directory of the native library to 
-``-Djava.libarary.path=<path_of_sigar_libs>`` add the following dependency::
-
-    "org.fusesource" % "sigar" % "@sigarVersion@"
- 
-Download the native Sigar libraries from `Maven Central <http://repo1.maven.org/maven2/org/fusesource/sigar/@sigarVersion@/>`_
-
-Adaptive Load Balancing
------------------------
-
-The ``AdaptiveLoadBalancingPool`` / ``AdaptiveLoadBalancingGroup`` performs load balancing of messages to cluster nodes based on the cluster metrics data.
-It uses random selection of routees with probabilities derived from the remaining capacity of the corresponding node.
-It can be configured to use a specific MetricsSelector to produce the probabilities, a.k.a. weights:
-
-* ``heap`` / ``HeapMetricsSelector`` - Used and max JVM heap memory. Weights based on remaining heap capacity; (max - used) / max
-* ``load`` / ``SystemLoadAverageMetricsSelector`` - System load average for the past 1 minute, corresponding value can be found in ``top`` of Linux systems. The system is possibly nearing a bottleneck if the system load average is nearing number of cpus/cores. Weights based on remaining load capacity; 1 - (load / processors) 
-* ``cpu`` / ``CpuMetricsSelector`` - CPU utilization in percentage, sum of User + Sys + Nice + Wait. Weights based on remaining cpu capacity; 1 - utilization
-* ``mix`` / ``MixMetricsSelector`` - Combines heap, cpu and load. Weights based on mean of remaining capacity of the combined selectors.
-* Any custom implementation of ``akka.cluster.routing.MetricsSelector``
-
-The collected metrics values are smoothed with `exponential weighted moving average <http://en.wikipedia.org/wiki/Moving_average#Exponential_moving_average>`_. In the :ref:`cluster_configuration_scala` you can adjust how quickly past data is decayed compared to new data.
-
-Let's take a look at this router in action. What can be more demanding than calculating factorials?
-
-The backend worker that performs the factorial calculation:
-
-.. includecode:: ../../../akka-samples/akka-sample-cluster-scala/src/main/scala/sample/cluster/factorial/FactorialBackend.scala#backend
-
-The frontend that receives user jobs and delegates to the backends via the router:
-
-.. includecode:: ../../../akka-samples/akka-sample-cluster-scala/src/main/scala/sample/cluster/factorial/FactorialFrontend.scala#frontend
-
-
-As you can see, the router is defined in the same way as other routers, and in this case it is configured as follows:
-
-.. includecode:: ../../../akka-samples/akka-sample-cluster-scala/src/main/resources/factorial.conf#adaptive-router
-
-It is only router type ``adaptive`` and the ``metrics-selector`` that is specific to this router, other things work 
-in the same way as other routers.
-
-The same type of router could also have been defined in code:
-
-.. includecode:: ../../../akka-samples/akka-sample-cluster-scala/src/main/scala/sample/cluster/factorial/Extra.scala#router-lookup-in-code
-
-.. includecode:: ../../../akka-samples/akka-sample-cluster-scala/src/main/scala/sample/cluster/factorial/Extra.scala#router-deploy-in-code
-
-The `Typesafe Activator <http://www.typesafe.com/platform/getstarted>`_ tutorial named 
-`Akka Cluster Samples with Scala <http://www.typesafe.com/activator/template/akka-sample-cluster-scala>`_.
-contains the full source code and instructions of how to run the **Adaptive Load Balancing** sample.
-
-Subscribe to Metrics Events
----------------------------
-
-It is possible to subscribe to the metrics events directly to implement other functionality.
-
-.. includecode:: ../../../akka-samples/akka-sample-cluster-scala/src/main/scala/sample/cluster/factorial/MetricsListener.scala#metrics-listener
-
-Custom Metrics Collector
-------------------------
-
-You can plug-in your own metrics collector instead of 
-``akka.cluster.SigarMetricsCollector`` or ``akka.cluster.JmxMetricsCollector``. Look at those two implementations
-for inspiration. The implementation class can be defined in the :ref:`cluster_configuration_scala`.
 
 How to Test
 ^^^^^^^^^^^
@@ -652,7 +605,7 @@ of code should only run for a specific role.
 .. includecode:: ../../../akka-samples/akka-sample-cluster-scala/src/multi-jvm/scala/sample/cluster/stats/StatsSampleSpec.scala#test-statsService
 
 Once again we take advantage of the facilities in :ref:`testkit <akka-testkit>` to verify expected behavior.
-Here using ``testActor`` as sender (via ``ImplicitSender``) and verifing the reply with ``expectMsgPF``.
+Here using ``testActor`` as sender (via ``ImplicitSender``) and verifying the reply with ``expectMsgPF``.
 
 In the above code you can see ``node(third)``, which is useful facility to get the root actor reference of
 the actor system for a specific role. This can also be used to grab the ``akka.actor.Address`` of that node.

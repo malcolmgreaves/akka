@@ -1,8 +1,10 @@
 /*
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.cluster
+
+// TODO remove metrics
 
 import scala.util.Try
 import akka.actor.Address

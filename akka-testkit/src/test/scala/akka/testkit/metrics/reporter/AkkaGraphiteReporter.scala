@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.testkit.metrics.reporter
 
@@ -12,7 +12,7 @@ import akka.testkit.metrics._
 import scala.concurrent.duration._
 
 /**
- * Used to report [[Metric]] types that the original [[com.codahale.metrics.graphite.GraphiteReporter]] is unaware of (cannot re-use directly because of private constructor).
+ * Used to report `com.codahale.metrics.Metric` types that the original `com.codahale.metrics.graphite.GraphiteReporter` is unaware of (cannot re-use directly because of private constructor).
  */
 class AkkaGraphiteReporter(
   registry: AkkaMetricRegistry,

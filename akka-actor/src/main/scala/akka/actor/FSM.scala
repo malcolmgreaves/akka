@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.actor
 
@@ -8,6 +8,7 @@ import scala.concurrent.duration.Duration
 import scala.collection.mutable
 import akka.routing.{ Deafen, Listen, Listeners }
 import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.duration._
 
 object FSM {
 
@@ -69,7 +70,7 @@ object FSM {
   /**
    * Signifies that the [[akka.actor.FSM]] is shutting itself down because of
    * an error, e.g. if the state to transition into does not exist. You can use
-   * this to communicate a more precise cause to the [[akka.actor.FSM.onTermination]] block.
+   * this to communicate a more precise cause to the `onTermination` block.
    */
   final case class Failure(cause: Any) extends Reason
 
@@ -118,18 +119,41 @@ object FSM {
    */
   final case class LogEntry[S, D](stateName: S, stateData: D, event: Any)
 
+  /** Used by `forMax` to signal "cancel stateTimeout" */
+  private final val SomeMaxFiniteDuration = Some(Long.MaxValue.nanos)
+
+  /**
+   * INTERNAL API
+   * Using a subclass for binary compatibility reasons
+   */
+  private[akka] class SilentState[S, D](_stateName: S, _stateData: D, _timeout: Option[FiniteDuration], _stopReason: Option[Reason], _replies: List[Any])
+    extends State[S, D](_stateName, _stateData, _timeout, _stopReason, _replies) {
+
+    /**
+     * INTERNAL API
+     */
+    private[akka] override def notifies: Boolean = false
+
+    override def copy(stateName: S = stateName, stateData: D = stateData, timeout: Option[FiniteDuration] = timeout, stopReason: Option[Reason] = stopReason, replies: List[Any] = replies): State[S, D] = {
+      new SilentState(stateName, stateData, timeout, stopReason, replies)
+    }
+  }
+
   /**
    * This captures all of the managed state of the [[akka.actor.FSM]]: the state
    * name, the state data, possibly custom timeout, stop reason and replies
    * accumulated while processing the last message.
    */
-  final case class State[S, D](stateName: S, stateData: D, timeout: Option[FiniteDuration] = None, stopReason: Option[Reason] = None, replies: List[Any] = Nil)(private[akka] val notifies: Boolean = true) {
+  case class State[S, D](stateName: S, stateData: D, timeout: Option[FiniteDuration] = None, stopReason: Option[Reason] = None, replies: List[Any] = Nil) {
 
     /**
-     * Copy object and update values if needed.
+     * INTERNAL API
      */
-    private[akka] def copy(stateName: S = stateName, stateData: D = stateData, timeout: Option[FiniteDuration] = timeout, stopReason: Option[Reason] = stopReason, replies: List[Any] = replies, notifies: Boolean = notifies): State[S, D] = {
-      State(stateName, stateData, timeout, stopReason, replies)(notifies)
+    private[akka] def notifies: Boolean = true
+
+    // defined here to be able to override it in SilentState
+    def copy(stateName: S = stateName, stateData: D = stateData, timeout: Option[FiniteDuration] = timeout, stopReason: Option[Reason] = stopReason, replies: List[Any] = replies): State[S, D] = {
+      new State(stateName, stateData, timeout, stopReason, replies)
     }
 
     /**
@@ -141,8 +165,10 @@ object FSM {
      */
     def forMax(timeout: Duration): State[S, D] = timeout match {
       case f: FiniteDuration ⇒ copy(timeout = Some(f))
-      case _                 ⇒ copy(timeout = None)
-    }
+      case Duration.Inf      ⇒ copy(timeout = SomeMaxFiniteDuration) // we map the Infinite duration to a special marker,
+      case _                 ⇒ copy(timeout = None) // that means "cancel stateTimeout". This marker is needed
+    } // so we do not have to break source/binary compat.
+    // TODO: Can be removed once we can break State#timeout signature to `Option[Duration]`
 
     /**
      * Send reply to sender of the current message, if available.
@@ -168,8 +194,14 @@ object FSM {
       copy(stopReason = Some(reason))
     }
 
+    /**
+     * INTERNAL API.
+     */
     private[akka] def withNotification(notifies: Boolean): State[S, D] = {
-      copy(notifies = notifies)
+      if (notifies)
+        State(stateName, stateData, timeout, stopReason, replies)
+      else
+        new SilentState(stateName, stateData, timeout, stopReason, replies)
     }
   }
 
@@ -323,7 +355,7 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
    * @param timeout state timeout for the initial state, overriding the default timeout for that state
    */
   final def startWith(stateName: S, stateData: D, timeout: Timeout = None): Unit =
-    currentState = FSM.State(stateName, stateData, timeout)()
+    currentState = FSM.State(stateName, stateData, timeout)
 
   /**
    * Produce transition to other state.
@@ -335,14 +367,14 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
    * @param nextStateName state designator for the next state
    * @return state transition descriptor
    */
-  final def goto(nextStateName: S): State = FSM.State(nextStateName, currentState.stateData)()
+  final def goto(nextStateName: S): State = FSM.State(nextStateName, currentState.stateData)
 
   /**
    * Produce "empty" transition descriptor.
    * Return this from a state function when no state change is to be effected.
    *
    * No transition event will be triggered by [[#stay]].
-   * If you want to trigger an event like `S -> S` for [[#onTransition]] to handle use [[#goto]] instead.
+   * If you want to trigger an event like `S -&gt; S` for `onTransition` to handle use `goto` instead.
    *
    * @return descriptor for staying in current state
    */
@@ -378,7 +410,6 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
    * @param msg message to be delivered
    * @param timeout delay of first message delivery and between subsequent messages
    * @param repeat send once if false, scheduleAtFixedRate if true
-   * @return current state descriptor
    */
   final def setTimer(name: String, msg: Any, timeout: FiniteDuration, repeat: Boolean = false): Unit = {
     if (debugEvent)
@@ -648,13 +679,18 @@ trait FSM[S, D] extends Actor with Listeners with ActorLogging {
         this.nextState = null
       }
       currentState = nextState
-      val timeout = if (currentState.timeout.isDefined) currentState.timeout else stateTimeouts(currentState.stateName)
-      if (timeout.isDefined) {
-        val t = timeout.get
-        if (t.isFinite && t.length >= 0) {
-          import context.dispatcher
-          timeoutFuture = Some(context.system.scheduler.scheduleOnce(t, self, TimeoutMarker(generation)))
-        }
+
+      def scheduleTimeout(d: FiniteDuration): Some[Cancellable] = {
+        import context.dispatcher
+        Some(context.system.scheduler.scheduleOnce(d, self, TimeoutMarker(generation)))
+      }
+
+      currentState.timeout match {
+        case SomeMaxFiniteDuration                    ⇒ // effectively disable stateTimeout
+        case Some(d: FiniteDuration) if d.length >= 0 ⇒ timeoutFuture = scheduleTimeout(d)
+        case _ ⇒
+          val timeout = stateTimeouts(currentState.stateName)
+          if (timeout.isDefined) timeoutFuture = scheduleTimeout(timeout.get)
       }
     }
   }
@@ -1123,10 +1159,9 @@ abstract class AbstractFSM[S, D] extends FSM[S, D] {
    * @param name identifier to be used with cancelTimer()
    * @param msg message to be delivered
    * @param timeout delay of first message delivery and between subsequent messages
-   * @return current state descriptor
    */
   final def setTimer(name: String, msg: Any, timeout: FiniteDuration): Unit =
-    setTimer(name, msg, timeout, false);
+    setTimer(name, msg, timeout, false)
 
   /**
    * Default reason if calling `stop()`.

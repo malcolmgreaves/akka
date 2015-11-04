@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.remote
 
@@ -56,56 +56,56 @@ class NewRemoteActorSpec extends MultiNodeSpec(NewRemoteActorMultiJvmSpec)
   override def verifySystemShutdown = true
 
   "A new remote actor" must {
-    "be locally instantiated on a remote node and be able to communicate through its RemoteActorRef" taggedAs LongRunningTest in {
+    "be locally instantiated on a remote node and be able to communicate through its RemoteActorRef" in {
 
       runOn(master) {
         val actor = system.actorOf(Props[SomeActor], "service-hello")
-        actor.isInstanceOf[RemoteActorRef] should be(true)
-        actor.path.address should be(node(slave).address)
+        actor.isInstanceOf[RemoteActorRef] should ===(true)
+        actor.path.address should ===(node(slave).address)
 
         val slaveAddress = testConductor.getAddressFor(slave).await
         actor ! "identify"
-        expectMsgType[ActorRef].path.address should be(slaveAddress)
+        expectMsgType[ActorRef].path.address should ===(slaveAddress)
       }
 
       enterBarrier("done")
     }
 
-    "be locally instantiated on a remote node (with null parameter) and be able to communicate through its RemoteActorRef" taggedAs LongRunningTest in {
+    "be locally instantiated on a remote node (with null parameter) and be able to communicate through its RemoteActorRef" in {
 
       runOn(master) {
         val actor = system.actorOf(Props(classOf[SomeActorWithParam], null), "service-hello-null")
-        actor.isInstanceOf[RemoteActorRef] should be(true)
-        actor.path.address should be(node(slave).address)
+        actor.isInstanceOf[RemoteActorRef] should ===(true)
+        actor.path.address should ===(node(slave).address)
 
         val slaveAddress = testConductor.getAddressFor(slave).await
         actor ! "identify"
-        expectMsgType[ActorRef].path.address should be(slaveAddress)
+        expectMsgType[ActorRef].path.address should ===(slaveAddress)
       }
 
       enterBarrier("done")
     }
 
-    "be locally instantiated on a remote node and be able to communicate through its RemoteActorRef (with deployOnAll)" taggedAs LongRunningTest in {
+    "be locally instantiated on a remote node and be able to communicate through its RemoteActorRef (with deployOnAll)" in {
 
       runOn(master) {
         val actor = system.actorOf(Props[SomeActor], "service-hello2")
-        actor.isInstanceOf[RemoteActorRef] should be(true)
-        actor.path.address should be(node(slave).address)
+        actor.isInstanceOf[RemoteActorRef] should ===(true)
+        actor.path.address should ===(node(slave).address)
 
         val slaveAddress = testConductor.getAddressFor(slave).await
         actor ! "identify"
-        expectMsgType[ActorRef].path.address should be(slaveAddress)
+        expectMsgType[ActorRef].path.address should ===(slaveAddress)
       }
 
       enterBarrier("done")
     }
 
-    "be able to shutdown system when using remote deployed actor" taggedAs LongRunningTest in within(20 seconds) {
+    "be able to shutdown system when using remote deployed actor" in within(20 seconds) {
       runOn(master) {
         val actor = system.actorOf(Props[SomeActor], "service-hello3")
-        actor.isInstanceOf[RemoteActorRef] should be(true)
-        actor.path.address should be(node(slave).address)
+        actor.isInstanceOf[RemoteActorRef] should ===(true)
+        actor.path.address should ===(node(slave).address)
         // This watch is in race with the shutdown of the watched system. This race should remain, as the test should
         // handle both cases:
         //  - remote system receives watch, replies with DeathWatchNotification

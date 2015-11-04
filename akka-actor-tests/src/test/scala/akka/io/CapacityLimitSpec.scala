@@ -1,11 +1,11 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.io
 
 import akka.testkit.{ TestProbe, AkkaSpec }
-import akka.TestUtils._
+import akka.testkit.SocketUtil._
 import Tcp._
 
 class CapacityLimitSpec extends AkkaSpec("""

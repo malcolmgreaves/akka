@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.actor
@@ -63,14 +63,14 @@ object ActorSystem {
    * then tries to walk the stack to find the callers class loader, then falls back to the ClassLoader
    * associated with the ActorSystem class.
    *
-   * @see <a href="http://typesafehub.github.io/config/v1.2.1/" target="_blank">The Typesafe Config Library API Documentation</a>
+   * @see <a href="http://typesafehub.github.io/config/v1.3.0/" target="_blank">The Typesafe Config Library API Documentation</a>
    */
   def create(name: String, config: Config): ActorSystem = apply(name, config)
 
   /**
    * Creates a new ActorSystem with the specified name, the specified Config, and specified ClassLoader
    *
-   * @see <a href="http://typesafehub.github.io/config/v1.2.1/" target="_blank">The Typesafe Config Library API Documentation</a>
+   * @see <a href="http://typesafehub.github.io/config/v1.3.0/" target="_blank">The Typesafe Config Library API Documentation</a>
    */
   def create(name: String, config: Config, classLoader: ClassLoader): ActorSystem = apply(name, config, classLoader)
 
@@ -87,7 +87,7 @@ object ActorSystem {
    * executor = "default-executor", including those that have not defined the executor setting and thereby fallback
    * to the default of "default-dispatcher.executor".
    *
-   * @see <a href="http://typesafehub.github.io/config/v1.2.1/" target="_blank">The Typesafe Config Library API Documentation</a>
+   * @see <a href="http://typesafehub.github.io/config/v1.3.0/" target="_blank">The Typesafe Config Library API Documentation</a>
    */
   def create(name: String, config: Config, classLoader: ClassLoader, defaultExecutionContext: ExecutionContext): ActorSystem = apply(name, Option(config), Option(classLoader), Option(defaultExecutionContext))
 
@@ -115,14 +115,14 @@ object ActorSystem {
    * then tries to walk the stack to find the callers class loader, then falls back to the ClassLoader
    * associated with the ActorSystem class.
    *
-   * @see <a href="http://typesafehub.github.io/config/v1.2.1/" target="_blank">The Typesafe Config Library API Documentation</a>
+   * @see <a href="http://typesafehub.github.io/config/v1.3.0/" target="_blank">The Typesafe Config Library API Documentation</a>
    */
   def apply(name: String, config: Config): ActorSystem = apply(name, Option(config), None, None)
 
   /**
    * Creates a new ActorSystem with the specified name, the specified Config, and specified ClassLoader
    *
-   * @see <a href="http://typesafehub.github.io/config/v1.2.1/" target="_blank">The Typesafe Config Library API Documentation</a>
+   * @see <a href="http://typesafehub.github.io/config/v1.3.0/" target="_blank">The Typesafe Config Library API Documentation</a>
    */
   def apply(name: String, config: Config, classLoader: ClassLoader): ActorSystem = apply(name, Option(config), Option(classLoader), None)
 
@@ -135,12 +135,12 @@ object ActorSystem {
    * If no ExecutionContext is given, the system will fallback to the executor configured under "akka.actor.default-dispatcher.default-executor.fallback".
    * The system will use the passed in config, or falls back to the deafult reference configuration using the ClassLoader.
    *
-   * @see <a href="http://typesafehub.github.io/config/v1.2.1/" target="_blank">The Typesafe Config Library API Documentation</a>
+   * @see <a href="http://typesafehub.github.io/config/v1.3.0/" target="_blank">The Typesafe Config Library API Documentation</a>
    */
   def apply(name: String, config: Option[Config] = None, classLoader: Option[ClassLoader] = None, defaultExecutionContext: Option[ExecutionContext] = None): ActorSystem = {
     val cl = classLoader.getOrElse(findClassLoader())
     val appConfig = config.getOrElse(ConfigFactory.load(cl))
-    new ActorSystemImpl(name, appConfig, cl, defaultExecutionContext).start()
+    new ActorSystemImpl(name, appConfig, cl, defaultExecutionContext, None).start()
   }
 
   /**
@@ -148,14 +148,14 @@ object ActorSystem {
    *
    * For more detailed information about the different possible configuration options, look in the Akka Documentation under "Configuration"
    *
-   * @see <a href="http://typesafehub.github.io/config/v1.2.1/" target="_blank">The Typesafe Config Library API Documentation</a>
+   * @see <a href="http://typesafehub.github.io/config/v1.3.0/" target="_blank">The Typesafe Config Library API Documentation</a>
    */
   class Settings(classLoader: ClassLoader, cfg: Config, final val name: String) {
 
     /**
      * The backing Config of this ActorSystem's Settings
      *
-     * @see <a href="http://typesafehub.github.io/config/v1.2.1/" target="_blank">The Typesafe Config Library API Documentation</a>
+     * @see <a href="http://typesafehub.github.io/config/v1.3.0/" target="_blank">The Typesafe Config Library API Documentation</a>
      */
     final val config: Config = {
       val config = cfg.withFallback(ConfigFactory.defaultReference(classLoader))
@@ -291,7 +291,7 @@ abstract class ActorSystem extends ActorRefFactory {
   def logConfiguration(): Unit
 
   /**
-   * Construct a path below the application guardian to be used with [[ActorSystem.actorSelection]].
+   * Construct a path below the application guardian to be used with [[ActorSystem#actorSelection]].
    */
   def /(name: String): ActorPath
 
@@ -301,7 +301,7 @@ abstract class ActorSystem extends ActorRefFactory {
   def child(child: String): ActorPath = /(child)
 
   /**
-   * Construct a path below the application guardian to be used with [[ActorSystem.actorSelection]].
+   * Construct a path below the application guardian to be used with [[ActorSystem#actorSelection]].
    */
   def /(name: Iterable[String]): ActorPath
 
@@ -326,7 +326,7 @@ abstract class ActorSystem extends ActorRefFactory {
   def eventStream: EventStream
 
   /**
-   * Convenient logging adapter for logging to the [[ActorSystem.eventStream]].
+   * Convenient logging adapter for logging to the [[ActorSystem#eventStream]].
    */
   def log: LoggingAdapter
 
@@ -369,7 +369,7 @@ abstract class ActorSystem extends ActorRefFactory {
    * The callbacks will be run sequentially in reverse order of registration, i.e.
    * last registration is run first.
    *
-   * @throws a RejectedExecutionException if the System has already shut down or if shutdown has been initiated.
+   * Throws a RejectedExecutionException if the System has already shut down or if shutdown has been initiated.
    *
    * Scala API
    */
@@ -382,7 +382,7 @@ abstract class ActorSystem extends ActorRefFactory {
    * The callbacks will be run sequentially in reverse order of registration, i.e.
    * last registration is run first.
    *
-   * @throws a RejectedExecutionException if the System has already shut down or if shutdown has been initiated.
+   * Throws a RejectedExecutionException if the System has already shut down or if shutdown has been initiated.
    */
   def registerOnTermination(code: Runnable): Unit
 
@@ -391,7 +391,7 @@ abstract class ActorSystem extends ActorRefFactory {
    * timeout has elapsed. This will block until after all on termination
    * callbacks have been run.
    *
-   * @throws TimeoutException in case of timeout
+   * Throws TimeoutException in case of timeout.
    */
   @deprecated("Use Await.result(whenTerminated, timeout) instead", "2.4")
   def awaitTermination(timeout: Duration): Unit
@@ -407,7 +407,7 @@ abstract class ActorSystem extends ActorRefFactory {
    * Stop this actor system. This will stop the guardian actor, which in turn
    * will recursively stop all its child actors, then the system guardian
    * (below which the logging actors reside) and the execute all registered
-   * termination handlers (see [[ActorSystem.registerOnTermination]]).
+   * termination handlers (see [[ActorSystem#registerOnTermination]]).
    */
   @deprecated("Use the terminate() method instead", "2.4")
   def shutdown(): Unit
@@ -426,7 +426,7 @@ abstract class ActorSystem extends ActorRefFactory {
    * Terminates this actor system. This will stop the guardian actor, which in turn
    * will recursively stop all its child actors, then the system guardian
    * (below which the logging actors reside) and the execute all registered
-   * termination handlers (see [[ActorSystem.registerOnTermination]]).
+   * termination handlers (see [[ActorSystem#registerOnTermination]]).
    */
   def terminate(): Future[Terminated]
 
@@ -519,7 +519,12 @@ abstract class ExtendedActorSystem extends ActorSystem {
 
 }
 
-private[akka] class ActorSystemImpl(val name: String, applicationConfig: Config, classLoader: ClassLoader, defaultExecutionContext: Option[ExecutionContext]) extends ExtendedActorSystem {
+private[akka] class ActorSystemImpl(
+  val name: String,
+  applicationConfig: Config,
+  classLoader: ClassLoader,
+  defaultExecutionContext: Option[ExecutionContext],
+  val guardianProps: Option[Props]) extends ExtendedActorSystem {
 
   if (!name.matches("""^[a-zA-Z0-9][a-zA-Z0-9-_]*$"""))
     throw new IllegalArgumentException(
@@ -577,9 +582,13 @@ private[akka] class ActorSystemImpl(val name: String, applicationConfig: Config,
 
   def systemActorOf(props: Props, name: String): ActorRef = systemGuardian.underlying.attachChild(props, name, systemService = true)
 
-  def actorOf(props: Props, name: String): ActorRef = guardian.underlying.attachChild(props, name, systemService = false)
+  def actorOf(props: Props, name: String): ActorRef =
+    if (guardianProps.isEmpty) guardian.underlying.attachChild(props, name, systemService = false)
+    else throw new UnsupportedOperationException("cannot create top-level actor from the outside on ActorSystem with custom user guardian")
 
-  def actorOf(props: Props): ActorRef = guardian.underlying.attachChild(props, systemService = false)
+  def actorOf(props: Props): ActorRef =
+    if (guardianProps.isEmpty) guardian.underlying.attachChild(props, systemService = false)
+    else throw new UnsupportedOperationException("cannot create top-level actor from the outside on ActorSystem with custom user guardian")
 
   def stop(actor: ActorRef): Unit = {
     val path = actor.path
@@ -728,6 +737,7 @@ private[akka] class ActorSystemImpl(val name: String, applicationConfig: Config,
   private def findExtension[T <: Extension](ext: ExtensionId[T]): T = extensions.get(ext) match {
     case c: CountDownLatch ⇒
       c.await(); findExtension(ext) //Registration in process, await completion and retry
+    case t: Throwable ⇒ throw t //Initialization failed, throw same again
     case other ⇒
       other.asInstanceOf[T] //could be a T or null, in which case we return the null as T
   }
@@ -747,7 +757,7 @@ private[akka] class ActorSystemImpl(val name: String, applicationConfig: Config,
             }
           } catch {
             case t: Throwable ⇒
-              extensions.remove(ext, inProcessOfRegistration) //In case shit hits the fan, remove the inProcess signal
+              extensions.replace(ext, inProcessOfRegistration, t) //In case shit hits the fan, remove the inProcess signal
               throw t //Escalate to caller
           } finally {
             inProcessOfRegistration.countDown //Always notify listeners of the inProcess signal
@@ -825,7 +835,7 @@ private[akka] class ActorSystemImpl(val name: String, applicationConfig: Config,
      * Adds a Runnable that will be executed on ActorSystem termination.
      * Note that callbacks are executed in reverse order of insertion.
      * @param r The callback to be executed on ActorSystem termination
-     * @throws RejectedExecutionException if called after ActorSystem has been terminated
+     * Throws RejectedExecutionException if called after ActorSystem has been terminated.
      */
     final def add(r: Runnable): Unit = {
       @tailrec def addRec(r: Runnable, p: Promise[T]): Unit = ref.get match {

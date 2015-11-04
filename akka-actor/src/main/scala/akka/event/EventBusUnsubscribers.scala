@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.event
 
@@ -51,7 +51,7 @@ private[akka] class EventStreamUnsubscriber(eventStream: EventStream, debug: Boo
  * INTERNAL API
  *
  * Provides factory for [[akka.event.EventStreamUnsubscriber]] actors with **unique names**.
- * This is needed if someone spins up more [[EventStream]]s using the same [[ActorSystem]],
+ * This is needed if someone spins up more [[EventStream]]s using the same [[akka.actor.ActorSystem]],
  * each stream gets it's own unsubscriber.
  */
 private[akka] object EventStreamUnsubscriber {
@@ -78,7 +78,7 @@ private[akka] object EventStreamUnsubscriber {
  *
  * Watches all actors which subscribe on the given event stream, and unsubscribes them from it when they are Terminated.
  */
-private[akka] class ActorClassificationUnsubscriber(bus: ActorClassification, debug: Boolean) extends Actor with Stash {
+private[akka] class ActorClassificationUnsubscriber(bus: ManagedActorClassification, debug: Boolean) extends Actor with Stash {
 
   import ActorClassificationUnsubscriber._
 
@@ -130,13 +130,13 @@ private[akka] object ActorClassificationUnsubscriber {
   final case class Register(actor: ActorRef, seq: Int)
   final case class Unregister(actor: ActorRef, seq: Int)
 
-  def start(system: ActorSystem, bus: ActorClassification, debug: Boolean = false) = {
+  def start(system: ActorSystem, bus: ManagedActorClassification, debug: Boolean = false) = {
     val debug = system.settings.config.getBoolean("akka.actor.debug.event-stream")
     system.asInstanceOf[ExtendedActorSystem]
       .systemActorOf(props(bus, debug), "actorClassificationUnsubscriber-" + unsubscribersCount.incrementAndGet())
   }
 
-  private def props(eventBus: ActorClassification, debug: Boolean) = Props(classOf[ActorClassificationUnsubscriber], eventBus, debug)
+  private def props(eventBus: ManagedActorClassification, debug: Boolean) = Props(classOf[ActorClassificationUnsubscriber], eventBus, debug)
 
 }
 

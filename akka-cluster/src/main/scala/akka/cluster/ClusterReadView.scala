@@ -1,8 +1,10 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.cluster
+
+// TODO remove metrics 
 
 import java.io.Closeable
 import scala.collection.immutable
@@ -75,6 +77,7 @@ private[akka] class ClusterReadView(cluster: Cluster) extends Closeable {
             _state = _state.copy(roleLeaderMap = _state.roleLeaderMap + (role -> leader))
           case stats: CurrentInternalStats  ⇒ _latestStats = stats
           case ClusterMetricsChanged(nodes) ⇒ _clusterMetrics = nodes
+          case ClusterShuttingDown          ⇒
         }
         case s: CurrentClusterState ⇒ _state = s
       }

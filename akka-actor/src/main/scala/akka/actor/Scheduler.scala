@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.actor
@@ -68,7 +68,11 @@ trait Scheduler {
    * Schedules a function to be run repeatedly with an initial delay and a
    * frequency. E.g. if you would like the function to be run after 2 seconds
    * and thereafter every 100ms you would set delay = Duration(2, TimeUnit.SECONDS)
-   * and interval = Duration(100, TimeUnit.MILLISECONDS)
+   * and interval = Duration(100, TimeUnit.MILLISECONDS). If the execution of
+   * the function takes longer than the interval, the subsequent execution will
+   * start immediately after the prior one completes (there will be no overlap
+   * of the function executions). In such cases, the actual execution interval
+   * will differ from the interval passed to this method.
    *
    * Scala API
    */
@@ -82,7 +86,13 @@ trait Scheduler {
    * Schedules a function to be run repeatedly with an initial delay and
    * a frequency. E.g. if you would like the function to be run after 2
    * seconds and thereafter every 100ms you would set delay = Duration(2,
-   * TimeUnit.SECONDS) and interval = Duration(100, TimeUnit.MILLISECONDS)
+   * TimeUnit.SECONDS) and interval = Duration(100, TimeUnit.MILLISECONDS). If
+   * the execution of the runnable takes longer than the interval, the
+   * subsequent execution will start immediately after the prior one completes
+   * (there will be no overlap of executions of the runnable). In such cases,
+   * the actual execution interval will differ from the interval passed to this
+   * method.
+   *
    *
    * Java API
    */
@@ -177,7 +187,7 @@ trait Cancellable {
  * when scheduling single-shot tasks, instead it always rounds up the task
  * delay to a full multiple of the TickDuration. This means that tasks are
  * scheduled possibly one tick later than they could be (if checking that
- * “now() + delay <= nextTick” were done).
+ * “now() + delay &lt;= nextTick” were done).
  */
 class LightArrayRevolverScheduler(config: Config,
                                   log: LoggingAdapter,

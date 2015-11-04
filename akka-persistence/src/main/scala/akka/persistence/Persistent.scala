@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.persistence
@@ -21,7 +21,7 @@ import akka.persistence.serialization.Message
  *
  * In essence it is either an [[NonPersistentRepr]] or [[PersistentRepr]].
  */
-private[persistence] sealed trait PersistentEnvelope { // FIXME PN: Rename to PersistentEnvelope
+private[persistence] sealed trait PersistentEnvelope {
   def payload: Any
   def sender: ActorRef
 }
@@ -35,9 +35,9 @@ private[persistence] final case class NonPersistentRepr(payload: Any, sender: Ac
 /**
  * Plugin API: representation of a persistent message in the journal plugin API.
  *
- * @see [[journal.SyncWriteJournal]]
- * @see [[journal.AsyncWriteJournal]]
- * @see [[journal.AsyncRecovery]]
+ * @see [[akka.persistence.journal.SyncWriteJournal]]
+ * @see [[akka.persistence.journal.AsyncWriteJournal]]
+ * @see [[akka.persistence.journal.AsyncRecovery]]
  */
 trait PersistentRepr extends PersistentEnvelope with Message {
   import scala.collection.JavaConverters._

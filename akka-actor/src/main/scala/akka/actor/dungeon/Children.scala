@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.actor.dungeon
@@ -10,6 +10,7 @@ import scala.collection.immutable
 import akka.actor._
 import akka.serialization.SerializationExtension
 import akka.util.{ Unsafe, Helpers }
+import akka.serialization.SerializerWithStringManifest
 
 private[akka] trait Children { this: ActorCell ⇒
 
@@ -175,10 +176,11 @@ private[akka] trait Children { this: ActorCell ⇒
 
   private def checkName(name: String): String = {
     name match {
-      case null                                    ⇒ throw new InvalidActorNameException("actor name must not be null")
-      case ""                                      ⇒ throw new InvalidActorNameException("actor name must not be empty")
-      case _ if ActorPath.isValidPathElement(name) ⇒ name
-      case _                                       ⇒ throw new InvalidActorNameException(s"Illegal actor name [$name]. Actor paths MUST: not start with `$$`, include only ASCII letters and can only contain these special characters: ${ActorPath.ValidSymbols}.")
+      case null ⇒ throw new InvalidActorNameException("actor name must not be null")
+      case ""   ⇒ throw new InvalidActorNameException("actor name must not be empty")
+      case _ ⇒
+        ActorPath.validatePathElement(name)
+        name
     }
   }
 
@@ -189,7 +191,18 @@ private[akka] trait Children { this: ActorCell ⇒
         props.args forall (arg ⇒
           arg == null ||
             arg.isInstanceOf[NoSerializationVerificationNeeded] ||
-            ser.deserialize(ser.serialize(arg.asInstanceOf[AnyRef]).get, arg.getClass).get != null)
+            {
+              val o = arg.asInstanceOf[AnyRef]
+              val serializer = ser.findSerializerFor(o)
+              val bytes = serializer.toBinary(o)
+              serializer match {
+                case ser2: SerializerWithStringManifest ⇒
+                  val manifest = ser2.manifest(o)
+                  ser.deserialize(bytes, serializer.identifier, manifest).get != null
+                case _ ⇒
+                  ser.deserialize(bytes, arg.getClass).get != null
+              }
+            })
       } catch {
         case NonFatal(e) ⇒ throw new IllegalArgumentException(s"pre-creation serialization check failed at [${cell.self.path}/$name]", e)
       }

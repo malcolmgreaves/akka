@@ -54,7 +54,7 @@ dispatcher to use, see more below). Here are some examples of how to create a
 The second line shows how to pass constructor arguments to the :class:`Actor`
 being created. The presence of a matching constructor is verified during
 construction of the :class:`Props` object, resulting in an
-:class:`IllegalArgumentEception` if no or multiple matching constructors are
+:class:`IllegalArgumentException` if no or multiple matching constructors are
 found.
 
 The third line demonstrates the use of a :class:`Creator<T extends Actor>`. The
@@ -83,6 +83,13 @@ usage of the :class:`Creator`-based methods which statically verify that the
 used constructor actually exists instead relying only on a runtime check.
 
 .. includecode:: code/docs/actor/UntypedActorDocTest.java#props-factory
+
+Another good practice is to declare what messages an Actor can receive
+as close to the actor definition as possible (e.g. as static classes
+inside the Actor or using other suitable class), which makes it easier to know
+what it can receive.
+
+.. includecode:: code/docs/actor/UntypedActorDocTest.java#messages-in-companion
 
 Creating Actors with Props
 --------------------------
@@ -376,6 +383,18 @@ result:
 
 .. includecode:: code/docs/actor/UntypedActorDocTest.java#selection-local
 
+.. note::
+
+  It is always preferable to communicate with other Actors using their ActorRef
+  instead of relying upon ActorSelection. Exceptions are
+
+    * sending messages using the :ref:`at-least-once-delivery-java` facility
+    * initiating first contact with a remote system
+
+  In all other cases ActorRefs can be provided during Actor creation or
+  initialization, passing them from parent to child or introducing Actors by
+  sending their ActorRefs to other Actors within messages.
+
 The supplied path is parsed as a :class:`java.net.URI`, which basically means
 that it is split on ``/`` into path elements. If the path starts with ``/``, it
 is absolute and the look-up starts at the root guardian (which is the parent of
@@ -418,17 +437,6 @@ Remote actor addresses may also be looked up, if :ref:`remoting <remoting-java>`
 .. includecode:: code/docs/actor/UntypedActorDocTest.java#selection-remote
 
 An example demonstrating remote actor look-up is given in :ref:`remote-sample-java`.
-
-.. note::
-
-  ``actorFor`` is deprecated in favor of ``actorSelection`` because actor references
-  acquired with ``actorFor`` behave differently for local and remote actors.
-  In the case of a local actor reference, the named actor needs to exist before the
-  lookup, or else the acquired reference will be an :class:`EmptyLocalActorRef`.
-  This will be true even if an actor with that exact path is created after acquiring
-  the actor reference. For remote actor references acquired with `actorFor` the
-  behaviour is different and sending messages to such a reference will under the hood
-  look up the actor by path on the remote system for every message send.
 
 Messages and immutability
 =========================

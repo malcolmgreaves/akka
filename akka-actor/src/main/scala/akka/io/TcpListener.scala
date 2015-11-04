@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.io
@@ -49,7 +49,7 @@ private[io] class TcpListener(selectorRouter: ActorRef,
   val localAddress =
     try {
       val socket = channel.socket
-      bind.options.foreach(_.beforeBind(channel))
+      bind.options.foreach(_.beforeServerSocketBind(socket))
       socket.bind(bind.localAddress, bind.backlog)
       val ret = socket.getLocalSocketAddress match {
         case isa: InetSocketAddress ⇒ isa
@@ -57,12 +57,15 @@ private[io] class TcpListener(selectorRouter: ActorRef,
       }
       channelRegistry.register(channel, if (bind.pullMode) 0 else SelectionKey.OP_ACCEPT)
       log.debug("Successfully bound to {}", ret)
-      bind.options.foreach(_.afterConnect(channel))
+      bind.options.foreach {
+        case o: Inet.SocketOptionV2 ⇒ o.afterBind(channel.socket)
+        case _                      ⇒
+      }
       ret
     } catch {
       case NonFatal(e) ⇒
         bindCommander ! bind.failureMessage
-        log.debug("Bind failed for TCP channel on endpoint [{}]: {}", bind.localAddress, e)
+        log.error(e, "Bind failed for TCP channel on endpoint [{}]", bind.localAddress)
         context.stop(self)
     }
 

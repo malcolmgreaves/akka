@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.actor;
@@ -41,6 +41,8 @@ public class JavaAPI {
     final GetRoutees r = GetRoutees.getInstance();
     final NoRouter nr = NoRouter.getInstance();
     final FromConfig fc = FromConfig.getInstance();
+
+    final ActorPath p = ActorPaths.fromString("akka.tcp://Sys@localhost:1234/user/abc");
   }
 
   @Test

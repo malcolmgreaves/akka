@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.remote
 
@@ -111,7 +111,7 @@ abstract class RemoteNodeDeathWatchSpec
 
   "RemoteNodeDeathWatch (" + scenario + ")" must {
 
-    "receive Terminated when remote actor is stopped" taggedAs LongRunningTest in {
+    "receive Terminated when remote actor is stopped" in {
       runOn(first) {
         val watcher = system.actorOf(Props(classOf[ProbeActor], testActor), "watcher1")
         enterBarrier("actors-started-1")
@@ -124,7 +124,7 @@ abstract class RemoteNodeDeathWatchSpec
         enterBarrier("watch-established-1")
 
         sleep()
-        expectMsgType[WrappedTerminated].t.actor should be(subject)
+        expectMsgType[WrappedTerminated].t.actor should ===(subject)
       }
 
       runOn(second) {
@@ -155,7 +155,7 @@ abstract class RemoteNodeDeathWatchSpec
       enterBarrier("after-1")
     }
 
-    "cleanup after watch/unwatch" taggedAs LongRunningTest in {
+    "cleanup after watch/unwatch" in {
       runOn(first) {
         val watcher = system.actorOf(Props(classOf[ProbeActor], testActor), "watcher2")
         enterBarrier("actors-started-2")
@@ -188,7 +188,7 @@ abstract class RemoteNodeDeathWatchSpec
       enterBarrier("after-2")
     }
 
-    "cleanup after bi-directional watch/unwatch" taggedAs LongRunningTest in {
+    "cleanup after bi-directional watch/unwatch" in {
       runOn(first, second) {
         val watcher = system.actorOf(Props(classOf[ProbeActor], testActor), "watcher3")
         system.actorOf(Props(classOf[ProbeActor], testActor), "subject3")
@@ -220,7 +220,7 @@ abstract class RemoteNodeDeathWatchSpec
       enterBarrier("after-3")
     }
 
-    "cleanup after bi-directional watch/stop/unwatch" taggedAs LongRunningTest in {
+    "cleanup after bi-directional watch/stop/unwatch" in {
       runOn(first, second) {
         val watcher1 = system.actorOf(Props(classOf[ProbeActor], testActor), "w1")
         val watcher2 = system.actorOf(Props(classOf[ProbeActor], testActor), "w2")
@@ -248,7 +248,7 @@ abstract class RemoteNodeDeathWatchSpec
         system.stop(s2)
         enterBarrier("stop-s2-4")
 
-        expectMsgType[WrappedTerminated].t.actor should be(subject2)
+        expectMsgType[WrappedTerminated].t.actor should ===(subject2)
       }
 
       runOn(third) {
@@ -267,7 +267,7 @@ abstract class RemoteNodeDeathWatchSpec
       enterBarrier("after-4")
     }
 
-    "cleanup after stop" taggedAs LongRunningTest in {
+    "cleanup after stop" in {
       runOn(first) {
         val p1, p2, p3 = TestProbe()
         val a1 = system.actorOf(Props(classOf[ProbeActor], p1.ref), "a1")
@@ -335,8 +335,8 @@ abstract class RemoteNodeDeathWatchSpec
         enterBarrier("watch-established-5")
         enterBarrier("stopped-5")
 
-        p1.receiveN(2, 5 seconds).collect { case WrappedTerminated(t) ⇒ t.actor }.toSet should be(Set(a1, a2))
-        p3.expectMsgType[WrappedTerminated](5 seconds).t.actor should be(a3)
+        p1.receiveN(2, 5 seconds).collect { case WrappedTerminated(t) ⇒ t.actor }.toSet should ===(Set(a1, a2))
+        p3.expectMsgType[WrappedTerminated](5 seconds).t.actor should ===(a3)
         p2.expectNoMsg(2 seconds)
         enterBarrier("terminated-verified-5")
 
@@ -359,7 +359,7 @@ abstract class RemoteNodeDeathWatchSpec
       enterBarrier("after-5")
     }
 
-    "receive Terminated when watched node crash" taggedAs LongRunningTest in {
+    "receive Terminated when watched node crash" in {
       runOn(first) {
         val watcher = system.actorOf(Props(classOf[ProbeActor], testActor), "watcher6")
         val watcher2 = system.actorOf(Props(classOf[ProbeActor], system.deadLetters))
@@ -383,7 +383,7 @@ abstract class RemoteNodeDeathWatchSpec
 
         log.info("exit second")
         testConductor.exit(second, 0).await
-        expectMsgType[WrappedTerminated](15 seconds).t.actor should be(subject)
+        expectMsgType[WrappedTerminated](15 seconds).t.actor should ===(subject)
 
         // verify that things are cleaned up, and heartbeating is stopped
         assertCleanup()
@@ -407,7 +407,7 @@ abstract class RemoteNodeDeathWatchSpec
       enterBarrier("after-6")
     }
 
-    "cleanup when watching node crash" taggedAs LongRunningTest in {
+    "cleanup when watching node crash" in {
       runOn(third) {
         val watcher = system.actorOf(Props(classOf[ProbeActor], testActor), "watcher7")
         enterBarrier("actors-started-7")

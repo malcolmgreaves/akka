@@ -116,7 +116,7 @@ Test Application
 ----------------
 
 The following section shows the effects of the different directives in practice,
-wherefor a test setup is needed. First off, we need a suitable supervisor:
+where a test setup is needed. First off, we need a suitable supervisor:
 
 .. includecode:: code/docs/actor/FaultHandlingDocSpec.scala
    :include: supervisor
@@ -126,9 +126,7 @@ This supervisor will be used to create a child, with which we can experiment:
 .. includecode:: code/docs/actor/FaultHandlingDocSpec.scala
    :include: child
 
-The test is easier by using the utilities described in :ref:`akka-testkit`,
-where ``AkkaSpec`` is a convenient mixture of ``TestKit with WordSpec with
-MustMatchers``
+The test is easier by using the utilities described in :ref:`akka-testkit`.
 
 .. includecode:: code/docs/actor/FaultHandlingDocSpec.scala
    :include: testkit

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.actor
@@ -30,7 +30,7 @@ package akka.actor
  *   }
  * </pre>
  * Note that the subclasses of `UntypedActorWithStash` by default request a Deque based mailbox since this class
- * implements the `RequiresMessageQueue<DequeBasedMessageQueueSemantics>` marker interface.
+ * implements the `RequiresMessageQueue&lt;DequeBasedMessageQueueSemantics&gt;` marker interface.
  * You can override the default mailbox provided when `DequeBasedMessageQueueSemantics` are requested via config:
  * <pre>
  *   akka.actor.mailbox.requirements {

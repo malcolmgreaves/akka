@@ -1,17 +1,11 @@
-import akka.{ AkkaBuild, Dependencies, Formatting, MultiNode, Unidoc }
+import akka.{ AkkaBuild, Dependencies, Formatting, MultiNode, ScaladocNoVerificationOfDiagrams }
 import com.typesafe.tools.mima.plugin.MimaKeys
 
 AkkaBuild.defaultSettings
 
 Formatting.formatSettings
 
-Unidoc.scaladocSettingsNoVerificationOfDiagrams
-
-Unidoc.javadocSettings
-
-MultiNode.multiJvmSettings
-
-libraryDependencies ++= Dependencies.contrib
+Dependencies.contrib
 
 MimaKeys.reportBinaryIssues := () // disable bin comp check
 
@@ -25,3 +19,5 @@ description := """|
                   |without prior deprecation. The Typesafe subscription does not cover
                   |support for these modules.
                   |""".stripMargin
+
+enablePlugins(MultiNode, ScaladocNoVerificationOfDiagrams)

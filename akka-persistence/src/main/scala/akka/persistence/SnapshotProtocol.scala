@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  * Copyright (C) 2012-2013 Eligotech BV.
  */
 
@@ -24,6 +24,7 @@ final case class SnapshotMetadata(persistenceId: String, sequenceNr: Long, times
  */
 @SerialVersionUID(1L)
 final case class SaveSnapshotSuccess(metadata: SnapshotMetadata)
+  extends SnapshotProtocol.Response
 
 /**
  * Sent to a [[PersistentActor]] after failed saving of a snapshot.
@@ -33,6 +34,7 @@ final case class SaveSnapshotSuccess(metadata: SnapshotMetadata)
  */
 @SerialVersionUID(1L)
 final case class SaveSnapshotFailure(metadata: SnapshotMetadata, cause: Throwable)
+  extends SnapshotProtocol.Response
 
 /**
  * Offers a [[PersistentActor]] a previously saved `snapshot` during recovery. This offer is received

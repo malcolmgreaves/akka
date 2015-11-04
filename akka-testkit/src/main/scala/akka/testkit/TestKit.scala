@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.testkit
 
@@ -693,7 +693,7 @@ trait TestKitBase {
 }
 
 /**
- * Test kit for testing actors. Inheriting from this trait enables reception of
+ * Test kit for testing actors. Inheriting from this class enables reception of
  * replies from actors, which are queued by an internal actor and can be
  * examined using the `expectMsg...` methods. Assertions and bounds concerning
  * timing are available in the form of `within` blocks.
@@ -702,9 +702,9 @@ trait TestKitBase {
  * class Test extends TestKit(ActorSystem()) {
  *   try {
  *
- *     val test = system.actorOf(Props[SomeActor]
+ *     val test = system.actorOf(Props[SomeActor])
  *
- *       within (1 second) {
+ *       within (1.second) {
  *         test ! SomeWork
  *         expectMsg(Result1) // bounded to 1 second
  *         expectMsg(Result2) // bounded to the remainder of the 1 second
@@ -724,7 +724,7 @@ trait TestKitBase {
  *
  *  - the ActorSystem passed into the constructor needs to be shutdown,
  *    otherwise thread pools and memory will be leaked
- *  - this trait is not thread-safe (only one actor with one queue, one stack
+ *  - this class is not thread-safe (only one actor with one queue, one stack
  *    of `within` blocks); it is expected that the code is executed from a
  *    constructor as shown above, which makes this a non-issue, otherwise take
  *    care not to run tests within a single test class instance in parallel.

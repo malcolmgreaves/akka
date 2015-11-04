@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package docs.actor
 
@@ -78,6 +78,24 @@ class DemoActorWrapper extends Actor {
     //#props-factory
   }
   //#props-factory
+
+  def receive = Actor.emptyBehavior
+}
+
+class ActorWithMessagesWrapper {
+  //#messages-in-companion
+  object MyActor {
+    case class Greeting(from: String)
+    case object Goodbye
+  }
+  class MyActor extends Actor with ActorLogging {
+    import MyActor._
+    def receive = {
+      case Greeting(greeter) => log.info(s"I was greeted by $greeter.")
+      case Goodbye           => log.info("Someone said goodbye to me.")
+    }
+  }
+  //#messages-in-companion
 
   def receive = Actor.emptyBehavior
 }
@@ -211,7 +229,7 @@ class Consumer extends Actor with ActorLogging with ConsumerBehavior {
 class ProducerConsumer extends Actor with ActorLogging
   with ProducerBehavior with ConsumerBehavior {
 
-  def receive = producerBehavior orElse consumerBehavior
+  def receive = producerBehavior.orElse[Any, Unit](consumerBehavior)
 }
 
 // protocol

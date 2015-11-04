@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.remote
 
@@ -9,7 +9,6 @@ import scala.concurrent.{ Await, Future }
 import TypedActorRemoteDeploySpec._
 import akka.actor.{ Deploy, ActorSystem, TypedProps, TypedActor }
 import scala.concurrent.duration._
-import akka.TestUtils.verifyActorTermination
 
 object TypedActorRemoteDeploySpec {
   val conf = ConfigFactory.parseString("""
@@ -38,10 +37,11 @@ class TypedActorRemoteDeploySpec extends AkkaSpec(conf) {
     val ts = TypedActor(system)
     val echoService: RemoteNameService = ts.typedActorOf(
       TypedProps[RemoteNameServiceImpl].withDeploy(Deploy(scope = RemoteScope(remoteAddress))))
-    Await.result(f(echoService), 3.seconds) should be(expected)
+    Await.result(f(echoService), 3.seconds) should ===(expected)
     val actor = ts.getActorRefFor(echoService)
     system.stop(actor)
-    verifyActorTermination(actor)
+    watch(actor)
+    expectTerminated(actor)
   }
 
   "Typed actors" must {

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.dispatch
@@ -76,7 +76,7 @@ class Dispatchers(val settings: ActorSystem.Settings, val prerequisites: Dispatc
    * Returns a dispatcher as specified in configuration. Please note that this
    * method _may_ create and return a NEW dispatcher, _every_ call.
    *
-   * @throws ConfigurationException if the specified dispatcher cannot be found in the configuration
+   * Throws ConfigurationException if the specified dispatcher cannot be found in the configuration.
    */
   def lookup(id: String): MessageDispatcher = lookupConfigurator(id).dispatcher()
 

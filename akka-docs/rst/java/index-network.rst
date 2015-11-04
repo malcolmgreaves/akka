@@ -6,6 +6,11 @@ Networking
 
    ../common/cluster
    cluster-usage
+   ../scala/cluster-singleton
+   ../scala/distributed-pub-sub
+   ../scala/cluster-client
+   ../scala/cluster-sharding
+   cluster-metrics
    remoting
    serialization
    io

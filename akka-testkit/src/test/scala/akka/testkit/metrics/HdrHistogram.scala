@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.testkit.metrics
 
@@ -10,7 +10,7 @@ import org.{ HdrHistogram ⇒ hdr }
  * Adapts Gil Tene's HdrHistogram to Metric's Metric interface.
  *
  * @param highestTrackableValue The highest value to be tracked by the histogram. Must be a positive
- *                              integer that is >= 2.
+ *                              integer that is &gt;= 2.
  * @param numberOfSignificantValueDigits The number of significant decimal digits to which the histogram will
  *                                       maintain value resolution and separation. Must be a non-negative
  *                                       integer between 0 and 5.

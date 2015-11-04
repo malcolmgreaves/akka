@@ -33,7 +33,7 @@ object SnapshotRecoveryLocalStoreSpec {
   }
 }
 
-class SnapshotRecoveryLocalStoreSpec extends AkkaSpec(PersistenceSpec.config("inmem", "SnapshotRecoveryLocalStoreSpec")) with PersistenceSpec with ImplicitSender {
+class SnapshotRecoveryLocalStoreSpec extends PersistenceSpec(PersistenceSpec.config("inmem", "SnapshotRecoveryLocalStoreSpec")) with ImplicitSender {
 
   import SnapshotRecoveryLocalStoreSpec._
 
@@ -57,7 +57,7 @@ class SnapshotRecoveryLocalStoreSpec extends AkkaSpec(PersistenceSpec.config("in
 
       expectMsgPF() {
         case (SnapshotMetadata(pid, seqNo, timestamp), state) ⇒
-          pid should be(persistenceId)
+          pid should ===(persistenceId)
       }
       expectMsg(RecoveryCompleted)
     }

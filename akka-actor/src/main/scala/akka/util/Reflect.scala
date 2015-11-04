@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.util
 import scala.util.control.NonFatal
@@ -39,7 +39,6 @@ private[akka] object Reflect {
   /**
    * INTERNAL API
    * @param clazz the class which to instantiate an instance of
-   * @tparam T the type of the instance that will be created
    * @return a new instance from the default constructor of the given class
    */
   private[akka] def instantiate[T](clazz: Class[T]): T = try clazz.newInstance catch {
@@ -113,7 +112,6 @@ private[akka] object Reflect {
   /**
    * INTERNAL API
    * @param clazz the class which to instantiate an instance of
-   * @tparam T the type of the instance that will be created
    * @return a function which when applied will create a new instance from the default constructor of the given class
    */
   private[akka] def instantiator[T](clazz: Class[T]): () ⇒ T = () ⇒ instantiate(clazz)

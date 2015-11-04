@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.japi.pf;
@@ -90,10 +90,11 @@ public class Match<I, R> extends AbstractMatch<I, R> {
 
   /**
    * Convenience function to make the Java code more readable.
-   * <p>
+   * <p></p>
+   * 
    * <pre><code>
    *   Matcher&lt;X, Y&gt; matcher = Matcher.create(...);
-   * <p>
+   * 
    *   Y someY = matcher.match(obj);
    * </code></pre>
    *

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.cluster
@@ -19,8 +19,15 @@ import akka.testkit.ImplicitSender
 import akka.actor.ActorRef
 import akka.testkit.TestProbe
 
+object ClusterDomainEventPublisherSpec {
+  val config = """
+    akka.actor.provider = "akka.cluster.ClusterActorRefProvider"
+    akka.remote.netty.tcp.port = 0
+    """
+}
+
 @org.junit.runner.RunWith(classOf[org.scalatest.junit.JUnitRunner])
-class ClusterDomainEventPublisherSpec extends AkkaSpec
+class ClusterDomainEventPublisherSpec extends AkkaSpec(ClusterDomainEventPublisherSpec.config)
   with BeforeAndAfterEach with ImplicitSender {
 
   var publisher: ActorRef = _
@@ -54,6 +61,7 @@ class ClusterDomainEventPublisherSpec extends AkkaSpec
     memberSubscriber = TestProbe()
     system.eventStream.subscribe(memberSubscriber.ref, classOf[MemberEvent])
     system.eventStream.subscribe(memberSubscriber.ref, classOf[LeaderChanged])
+    system.eventStream.subscribe(memberSubscriber.ref, ClusterShuttingDown.getClass)
 
     publisher = system.actorOf(Props[ClusterDomainEventPublisher])
     publisher ! PublishChanges(g0)
@@ -160,8 +168,9 @@ class ClusterDomainEventPublisherSpec extends AkkaSpec
       subscriber.expectNoMsg(500 millis)
     }
 
-    "publish Removed when stopped" in {
+    "publish ClusterShuttingDown and Removed when stopped" in {
       publisher ! PoisonPill
+      memberSubscriber.expectMsg(ClusterShuttingDown)
       memberSubscriber.expectMsg(MemberRemoved(aRemoved, Up))
     }
 

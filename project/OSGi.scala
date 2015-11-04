@@ -27,6 +27,13 @@ object OSGi {
   val camel = exports(Seq("akka.camel.*"))
 
   val cluster = exports(Seq("akka.cluster.*"), imports = Seq(protobufImport()))
+  
+  val clusterTools = exports(Seq("akka.cluster.singleton.*", "akka.cluster.client.*", "akka.cluster.pubsub.*"), 
+      imports = Seq(protobufImport()))
+      
+  val clusterSharding = exports(Seq("akka.cluster.sharding.*"), imports = Seq(protobufImport()))    
+
+  val clusterMetrics = exports(Seq("akka.cluster.metrics.*"), imports = Seq(protobufImport(),kamonImport(),sigarImport()))
 
   val osgi = exports(Seq("akka.osgi.*"))
 
@@ -57,8 +64,10 @@ object OSGi {
     val packageName = "scala.*"
     val ScalaVersion = """(\d+)\.(\d+)\..*""".r
     val ScalaVersion(epoch, major) = version
-    versionedImport(packageName, s"$epoch.$major", s"$epoch.${major+1}")
+    versionedImport(packageName, s"$epoch.$major", s"$epoch.${major.toInt+1}")
   }
+  def kamonImport(packageName: String = "kamon.sigar.*") = optionalResolution(versionedImport(packageName, "1.6.5", "1.6.6"))
+  def sigarImport(packageName: String = "org.hyperic.*") = optionalResolution(versionedImport(packageName, "1.6.5", "1.6.6"))
   def optionalResolution(packageName: String) = "%s;resolution:=optional".format(packageName)
   def versionedImport(packageName: String, lower: String, upper: String) = s"""$packageName;version="[$lower,$upper)""""
 }

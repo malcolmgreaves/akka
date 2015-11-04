@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.japi.pf;
@@ -110,7 +110,7 @@ public class UnitMatch<I> extends AbstractMatch<I, BoxedUnit> {
    * <p>
    * <pre><code>
    *   UnitMatcher&lt;X&gt; matcher = UnitMatcher.create(...);
-   * <p>
+   * 
    *   matcher.match(obj);
    * </code></pre>
    *
