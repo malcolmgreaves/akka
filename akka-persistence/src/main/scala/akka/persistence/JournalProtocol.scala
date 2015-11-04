@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.persistence
@@ -23,7 +23,7 @@ private[persistence] object JournalProtocol {
   sealed trait Response extends Message
 
   /**
-   * Reply message to a failed [[DeleteMessages]] request.
+   * Reply message to a failed [[DeleteMessagesTo]] request.
    */
   final case class DeleteMessagesFailure(cause: Throwable)
     extends Response
@@ -54,7 +54,7 @@ private[persistence] object JournalProtocol {
 
   /**
    * Reply message to a failed [[WriteMessages]] request. This reply is sent to the requestor
-   * before all subsequent [[WriteMessagFailure]] replies.
+   * before all subsequent [[WriteMessageFailure]] replies.
    *
    * @param cause failure cause.
    */

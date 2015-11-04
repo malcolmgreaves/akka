@@ -1,18 +1,18 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.pattern
 
-import language.implicitConversions
-
 import java.util.concurrent.TimeoutException
+
 import akka.actor._
 import akka.dispatch.sysmsg._
-import scala.annotation.tailrec
-import scala.util.control.NonFatal
-import scala.concurrent.{ Future, Promise, ExecutionContext }
 import akka.util.{ Timeout, Unsafe }
-import scala.util.{ Success, Failure }
+
+import scala.annotation.tailrec
+import scala.concurrent.{ ExecutionContext, Future, Promise }
+import scala.language.implicitConversions
+import scala.util.{ Failure, Success }
 
 /**
  * This is what is used to complete a Future that is returned from an ask/? call,
@@ -72,9 +72,10 @@ trait AskSupport {
    * }}}
    *
    */
-  def ask(actorRef: ActorRef, message: Any)(implicit timeout: Timeout): Future[Any] = actorRef ? message
+  def ask(actorRef: ActorRef, message: Any)(implicit timeout: Timeout): Future[Any] =
+    actorRef.internalAsk(message, timeout, ActorRef.noSender)
   def ask(actorRef: ActorRef, message: Any, sender: ActorRef)(implicit timeout: Timeout): Future[Any] =
-    actorRef.?(message)(timeout, sender)
+    actorRef.internalAsk(message, timeout, sender)
 
   /**
    * Import this implicit conversion to gain `?` and `ask` methods on
@@ -120,9 +121,24 @@ trait AskSupport {
    * }}}
    *
    */
-  def ask(actorSelection: ActorSelection, message: Any)(implicit timeout: Timeout): Future[Any] = actorSelection ? message
+  def ask(actorSelection: ActorSelection, message: Any)(implicit timeout: Timeout): Future[Any] =
+    actorSelection.internalAsk(message, timeout, ActorRef.noSender)
   def ask(actorSelection: ActorSelection, message: Any, sender: ActorRef)(implicit timeout: Timeout): Future[Any] =
-    actorSelection.?(message)(timeout, sender)
+    actorSelection.internalAsk(message, timeout, sender)
+}
+
+object AskableActorRef {
+  /**
+   * INTERNAL API: for binary compatibility
+   */
+  private[pattern] def ask$extension(actorRef: ActorRef, message: Any, timeout: Timeout): Future[Any] =
+    actorRef.internalAsk(message, timeout, ActorRef.noSender)
+
+  /**
+   * INTERNAL API: for binary compatibility
+   */
+  private[pattern] def $qmark$extension(actorRef: ActorRef, message: Any, timeout: Timeout): Future[Any] =
+    actorRef.internalAsk(message, timeout, ActorRef.noSender)
 }
 
 /*
@@ -130,7 +146,28 @@ trait AskSupport {
  */
 final class AskableActorRef(val actorRef: ActorRef) extends AnyVal {
 
-  def ask(message: Any)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Any] = actorRef match {
+  /**
+   * INTERNAL API: for binary compatibility
+   */
+  protected def ask(message: Any, timeout: Timeout): Future[Any] =
+    internalAsk(message, timeout, ActorRef.noSender)
+
+  def ask(message: Any)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Any] =
+    internalAsk(message, timeout, sender)
+
+  /**
+   * INTERNAL API: for binary compatibility
+   */
+  protected def ?(message: Any)(implicit timeout: Timeout): Future[Any] =
+    internalAsk(message, timeout, ActorRef.noSender)
+
+  def ?(message: Any)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Any] =
+    internalAsk(message, timeout, sender)
+
+  /**
+   * INTERNAL API: for binary compatibility
+   */
+  private[pattern] def internalAsk(message: Any, timeout: Timeout, sender: ActorRef) = actorRef match {
     case ref: InternalActorRef if ref.isTerminated ⇒
       actorRef ! message
       Future.failed[Any](new AskTimeoutException(s"""Recipient[$actorRef] had already been terminated. Sender[$sender] sent the message of type "${message.getClass.getName}"."""))
@@ -138,14 +175,27 @@ final class AskableActorRef(val actorRef: ActorRef) extends AnyVal {
       if (timeout.duration.length <= 0)
         Future.failed[Any](new IllegalArgumentException(s"""Timeout length must not be negative, question not sent to [$actorRef]. Sender[$sender] sent the message of type "${message.getClass.getName}"."""))
       else {
-        val a = PromiseActorRef(ref.provider, timeout, targetName = actorRef, message, sender)
+        val a = PromiseActorRef(ref.provider, timeout, targetName = actorRef, message.getClass.getName, sender)
         actorRef.tell(message, a)
         a.result.future
       }
     case _ ⇒ Future.failed[Any](new IllegalArgumentException(s"""Unsupported recipient ActorRef type, question not sent to [$actorRef]. Sender[$sender] sent the message of type "${message.getClass.getName}"."""))
   }
 
-  def ?(message: Any)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Any] = ask(message)(timeout, sender)
+}
+
+object AskableActorSelection {
+  /**
+   * INTERNAL API: for binary compatibility
+   */
+  private[pattern] def ask$extension(actorSel: ActorSelection, message: Any, timeout: Timeout): Future[Any] =
+    actorSel.internalAsk(message, timeout, ActorRef.noSender)
+
+  /**
+   * INTERNAL API: for binary compatibility
+   */
+  private[pattern] def $qmark$extension(actorSel: ActorSelection, message: Any, timeout: Timeout): Future[Any] =
+    actorSel.internalAsk(message, timeout, ActorRef.noSender)
 }
 
 /*
@@ -153,20 +203,39 @@ final class AskableActorRef(val actorRef: ActorRef) extends AnyVal {
  */
 final class AskableActorSelection(val actorSel: ActorSelection) extends AnyVal {
 
-  def ask(message: Any)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Any] = actorSel.anchor match {
+  /**
+   * INTERNAL API: for binary compatibility
+   */
+  protected def ask(message: Any, timeout: Timeout): Future[Any] =
+    internalAsk(message, timeout, ActorRef.noSender)
+
+  def ask(message: Any)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Any] =
+    internalAsk(message, timeout, sender)
+
+  /**
+   * INTERNAL API: for binary compatibility
+   */
+  protected def ?(message: Any)(implicit timeout: Timeout): Future[Any] =
+    internalAsk(message, timeout, ActorRef.noSender)
+
+  def ?(message: Any)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Any] =
+    internalAsk(message, timeout, sender)
+
+  /**
+   * INTERNAL API: for binary compatibility
+   */
+  private[pattern] def internalAsk(message: Any, timeout: Timeout, sender: ActorRef): Future[Any] = actorSel.anchor match {
     case ref: InternalActorRef ⇒
       if (timeout.duration.length <= 0)
         Future.failed[Any](
           new IllegalArgumentException(s"""Timeout length must not be negative, question not sent to [$actorSel]. Sender[$sender] sent the message of type "${message.getClass.getName}"."""))
       else {
-        val a = PromiseActorRef(ref.provider, timeout, targetName = actorSel, message, sender)
+        val a = PromiseActorRef(ref.provider, timeout, targetName = actorSel, message.getClass.getName, sender)
         actorSel.tell(message, a)
         a.result.future
       }
     case _ ⇒ Future.failed[Any](new IllegalArgumentException(s"""Unsupported recipient ActorRef type, question not sent to [$actorSel]. Sender[$sender] sent the message of type "${message.getClass.getName}"."""))
   }
-
-  def ?(message: Any)(implicit timeout: Timeout, sender: ActorRef = Actor.noSender): Future[Any] = ask(message)(timeout, sender)
 }
 
 /**
@@ -175,11 +244,16 @@ final class AskableActorSelection(val actorSel: ActorSelection) extends AnyVal {
  *
  * INTERNAL API
  */
-private[akka] final class PromiseActorRef private (val provider: ActorRefProvider, val result: Promise[Any])
+private[akka] final class PromiseActorRef private (val provider: ActorRefProvider, val result: Promise[Any], _mcn: String)
   extends MinimalActorRef {
+  import AbstractPromiseActorRef.{ stateOffset, watchedByOffset }
   import PromiseActorRef._
-  import AbstractPromiseActorRef.stateOffset
-  import AbstractPromiseActorRef.watchedByOffset
+
+  @deprecated("Use the full constructor", "2.4")
+  def this(provider: ActorRefProvider, result: Promise[Any]) = this(provider, result, "unknown")
+
+  // This is necessary for weaving the PromiseActorRef into the asked message, i.e. the replyTo pattern.
+  @volatile var messageClassName = _mcn
 
   /**
    * As an optimization for the common (local) case we only register this PromiseActorRef
@@ -291,7 +365,8 @@ private[akka] final class PromiseActorRef private (val provider: ActorRefProvide
     case _ ⇒
   }
 
-  @deprecated("Use context.watch(actor) and receive Terminated(actor)", "2.2") override def isTerminated: Boolean = state match {
+  @deprecated("Use context.watch(actor) and receive Terminated(actor)", "2.2")
+  override private[akka] def isTerminated: Boolean = state match {
     case Stopped | _: StoppedWithPath ⇒ true
     case _                            ⇒ false
   }
@@ -305,7 +380,7 @@ private[akka] final class PromiseActorRef private (val provider: ActorRefProvide
         watchers foreach { watcher ⇒
           // ➡➡➡ NEVER SEND THE SAME SYSTEM MESSAGE OBJECT TO TWO ACTORS ⬅⬅⬅
           watcher.asInstanceOf[InternalActorRef]
-            .sendSystemMessage(DeathWatchNotification(watcher, existenceConfirmed = true, addressTerminated = false))
+            .sendSystemMessage(DeathWatchNotification(this, existenceConfirmed = true, addressTerminated = false))
         }
       }
     }
@@ -330,17 +405,20 @@ private[akka] object PromiseActorRef {
 
   private val ActorStopResult = Failure(new ActorKilledException("Stopped"))
 
-  def apply(provider: ActorRefProvider, timeout: Timeout, targetName: Any, message: Any, sender: ActorRef = Actor.noSender): PromiseActorRef = {
+  def apply(provider: ActorRefProvider, timeout: Timeout, targetName: Any, messageClassName: String, sender: ActorRef = Actor.noSender): PromiseActorRef = {
     val result = Promise[Any]()
     val scheduler = provider.guardian.underlying.system.scheduler
-    val a = new PromiseActorRef(provider, result)
+    val a = new PromiseActorRef(provider, result, messageClassName)
     implicit val ec = a.internalCallingThreadExecutionContext
-    val messageClassName = message.getClass.getName
     val f = scheduler.scheduleOnce(timeout.duration) {
       result tryComplete Failure(
-        new AskTimeoutException(s"""Ask timed out on [$targetName] after [${timeout.duration.toMillis} ms]. Sender[$sender] sent message of type "$messageClassName"."""))
+        new AskTimeoutException(s"""Ask timed out on [$targetName] after [${timeout.duration.toMillis} ms]. Sender[$sender] sent message of type "${a.messageClassName}"."""))
     }
     result.future onComplete { _ ⇒ try a.stop() finally f.cancel() }
     a
   }
+
+  @deprecated("Use apply with messageClassName and sender parameters", "2.4")
+  def apply(provider: ActorRefProvider, timeout: Timeout, targetName: String): PromiseActorRef =
+    apply(provider, timeout, targetName, "unknown", Actor.noSender)
 }

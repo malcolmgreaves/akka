@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.routing
 
@@ -260,7 +260,7 @@ final case class ConsistentHashingRoutingLogic(
  */
 @SerialVersionUID(1L)
 final case class ConsistentHashingPool(
-  val nrOfInstances: Int,
+  override val nrOfInstances: Int,
   override val resizer: Option[Resizer] = None,
   val virtualNodesFactor: Int = 0,
   val hashMapping: ConsistentHashingRouter.ConsistentHashMapping = ConsistentHashingRouter.emptyConsistentHashMapping,

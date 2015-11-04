@@ -5,6 +5,17 @@ import sbt.Keys._
 
 object Sample {
 
+  object CliOptions {
+    /**
+     * Aggregated sample builds are transformed by swapping library dependencies to project ones.
+     * This does work play well with dbuild and breaks scala community build. Therefore it was made
+     * optional.
+     *
+     * Default: true
+     */
+    val aggregateSamples  = sys.props.getOrElse("akka.build.aggregateSamples", "true").toBoolean
+  }
+
   final val akkaOrganization = "com.typesafe.akka"
 
   def buildTransformer = (ti: BuildLoader.TransformInfo) => ti.base.name match {
@@ -61,9 +72,11 @@ object Sample {
    * transformed sample projects should have its settings added here.
    */
   private val enableAutoPlugins = (project: Project) =>
-    project.settings(
-      Publish.projectSettings: _*
-    )
+    project.settings((
+      MiMa.projectSettings ++
+      Publish.projectSettings ++
+      ValidatePullRequest.projectSettings
+    ): _*).configs(ValidatePullRequest.ValidatePR)
 
   private implicit class RichLoadedDefinitions(ld: LoadedDefinitions) {
     def copy(projects: Seq[Project]) =

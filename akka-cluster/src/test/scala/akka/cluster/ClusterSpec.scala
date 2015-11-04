@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.cluster
@@ -15,6 +15,7 @@ import akka.cluster.InternalClusterAction._
 import java.lang.management.ManagementFactory
 import javax.management.ObjectName
 import akka.actor.ActorRef
+import akka.testkit.TestProbe
 
 object ClusterSpec {
   val config = """
@@ -48,7 +49,7 @@ class ClusterSpec extends AkkaSpec(ClusterSpec.config) with ImplicitSender {
   "A Cluster" must {
 
     "use the address of the remote transport" in {
-      cluster.selfAddress should be(selfAddress)
+      cluster.selfAddress should ===(selfAddress)
     }
 
     "register jmx mbean" in {
@@ -59,13 +60,13 @@ class ClusterSpec extends AkkaSpec(ClusterSpec.config) with ImplicitSender {
     }
 
     "initially become singleton cluster when joining itself and reach convergence" in {
-      clusterView.members.size should be(0)
+      clusterView.members.size should ===(0)
       cluster.join(selfAddress)
       leaderActions() // Joining -> Up
       awaitCond(clusterView.isSingletonCluster)
-      clusterView.self.address should be(selfAddress)
-      clusterView.members.map(_.address) should be(Set(selfAddress))
-      awaitAssert(clusterView.status should be(MemberStatus.Up))
+      clusterView.self.address should ===(selfAddress)
+      clusterView.members.map(_.address) should ===(Set(selfAddress))
+      awaitAssert(clusterView.status should ===(MemberStatus.Up))
     }
 
     "publish inital state as snapshot to subscribers" in {
@@ -93,12 +94,17 @@ class ClusterSpec extends AkkaSpec(ClusterSpec.config) with ImplicitSender {
 
     // this should be the last test step, since the cluster is shutdown
     "publish MemberRemoved when shutdown" in {
+      val callbackProbe = TestProbe()
+      cluster.registerOnMemberRemoved(callbackProbe.ref ! "OnMemberRemoved")
+
       cluster.subscribe(testActor, classOf[ClusterEvent.MemberRemoved])
       // first, is in response to the subscription
       expectMsgClass(classOf[ClusterEvent.CurrentClusterState])
 
       cluster.shutdown()
-      expectMsgType[ClusterEvent.MemberRemoved].member.address should be(selfAddress)
+      expectMsgType[ClusterEvent.MemberRemoved].member.address should ===(selfAddress)
+
+      callbackProbe.expectMsg("OnMemberRemoved")
     }
 
   }

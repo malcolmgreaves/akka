@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.testkit;
 
@@ -332,7 +332,7 @@ public class JavaTestKit {
    * 
    * <pre>
    * <code>
-   * final String out = new ExpectMsg<String>("match hint") {
+   * final String out = new ExpectMsg&lt;String&gt;("match hint") {
    *   protected String match(Object in) {
    *     if (in instanceof Integer)
    *       return "match";

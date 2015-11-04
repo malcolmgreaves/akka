@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.camel.internal
 
@@ -47,7 +47,7 @@ private[camel] class DefaultCamel(val system: ExtendedActorSystem) extends Camel
   /**
    * Starts camel and underlying camel context and template.
    * Only the creator of Camel should start and stop it.
-   * @see akka.camel.DefaultCamel#shutdown()
+   * @see akka.camel.internal.DefaultCamel#shutdown
    */
   def start(): this.type = {
     context.start()
@@ -61,7 +61,7 @@ private[camel] class DefaultCamel(val system: ExtendedActorSystem) extends Camel
    * Only the creator of Camel should shut it down.
    * There is no need to stop Camel instance, which you get from the CamelExtension, as its lifecycle is bound to the actor system.
    *
-   * @see akka.camel.DefaultCamel#start()
+   * @see akka.camel.internal.DefaultCamel#start
    */
   def shutdown(): Unit = {
     try context.stop() finally {

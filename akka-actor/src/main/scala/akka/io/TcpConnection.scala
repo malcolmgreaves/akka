@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.io
@@ -181,8 +181,13 @@ private[io] abstract class TcpConnection(val tcp: TcpExt, val channel: SocketCha
   def completeConnect(registration: ChannelRegistration, commander: ActorRef,
                       options: immutable.Traversable[SocketOption]): Unit = {
     // Turn off Nagle's algorithm by default
-    channel.socket.setTcpNoDelay(true)
-    options.foreach(_.afterConnect(channel))
+    try channel.socket.setTcpNoDelay(true) catch {
+      case e: SocketException ⇒
+        // as reported in #16653 some versions of netcat (`nc -z`) doesn't allow setTcpNoDelay
+        // continue anyway
+        log.debug("Could not enable TcpNoDelay: {}", e.getMessage)
+    }
+    options.foreach(_.afterConnect(channel.socket))
 
     commander ! Connected(
       channel.socket.getRemoteSocketAddress.asInstanceOf[InetSocketAddress],

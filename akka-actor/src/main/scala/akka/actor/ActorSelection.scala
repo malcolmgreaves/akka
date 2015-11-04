@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.actor
 
@@ -101,7 +101,7 @@ abstract class ActorSelection extends Serializable {
 
   /**
    * String representation of the actor selection suitable for storage and recreation.
-   * The output is similar to the URI fragment returned by [[akka.actor.ActorPath.toSerializationFormat]].
+   * The output is similar to the URI fragment returned by [[akka.actor.ActorPath#toSerializationFormat]].
    * @return URI fragment
    */
   def toSerializationFormat: String = {

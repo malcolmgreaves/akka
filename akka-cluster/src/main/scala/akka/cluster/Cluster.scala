@@ -1,35 +1,27 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.cluster
 
-import language.implicitConversions
-import akka.actor._
-import akka.actor.Status._
-import akka.ConfigurationException
-import akka.dispatch.MonitorableThreadFactory
-import akka.event.Logging
-import akka.pattern._
-import akka.remote._
-import akka.routing._
-import akka.util._
-import scala.concurrent.duration._
-import scala.concurrent.forkjoin.ThreadLocalRandom
-import scala.annotation.tailrec
-import scala.collection.immutable
 import java.io.Closeable
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.{ ExecutionContext, Await }
-import com.typesafe.config.ConfigFactory
-import akka.remote.DefaultFailureDetectorRegistry
-import akka.remote.FailureDetector
-import com.typesafe.config.Config
-import akka.event.LoggingAdapter
 import java.util.concurrent.ThreadFactory
-import scala.util.control.NonFatal
+import java.util.concurrent.atomic.AtomicBoolean
+
+import akka.ConfigurationException
+import akka.actor._
+import akka.dispatch.MonitorableThreadFactory
+import akka.event.{ Logging, LoggingAdapter }
+import akka.pattern._
+import akka.remote.{ DefaultFailureDetectorRegistry, FailureDetector, _ }
+import com.typesafe.config.{ Config, ConfigFactory }
+
 import scala.annotation.varargs
+import scala.collection.immutable
+import scala.concurrent.duration._
+import scala.concurrent.{ Await, ExecutionContext }
+import scala.language.implicitConversions
+import scala.util.control.NonFatal
 
 /**
  * Cluster Extension Id and factory for creating Cluster extension.
@@ -58,15 +50,15 @@ object Cluster extends ExtensionId[Cluster] with ExtensionIdProvider {
  *
  * Each cluster [[Member]] is identified by its [[akka.actor.Address]], and
  * the cluster address of this actor system is [[#selfAddress]]. A member also has a status;
- * initially [[MemberStatus.Joining]] followed by [[MemberStatus.Up]].
+ * initially [[MemberStatus]] `Joining` followed by [[MemberStatus]] `Up`.
  */
 class Cluster(val system: ExtendedActorSystem) extends Extension {
 
   import ClusterEvent._
 
   val settings = new ClusterSettings(system.settings.config, system.name)
-  import settings._
   import InfoLogger._
+  import settings._
 
   /**
    * The address including a `uid` of this cluster member.
@@ -119,7 +111,6 @@ class Cluster(val system: ExtendedActorSystem) extends Extension {
    */
   private[cluster] val scheduler: Scheduler = {
     if (system.scheduler.maxFrequency < 1.second / SchedulerTickDuration) {
-      import scala.collection.JavaConverters._
       logInfo("Using a dedicated scheduler for cluster. Default scheduler can be used if configured " +
         "with 'akka.scheduler.tick-duration' [{} ms] <=  'akka.cluster.scheduler.tick-duration' [{} ms].",
         (1000 / system.scheduler.maxFrequency).toInt, SchedulerTickDuration.toMillis)
@@ -221,11 +212,11 @@ class Cluster(val system: ExtendedActorSystem) extends Extension {
    * The `to` classes can be [[akka.cluster.ClusterEvent.ClusterDomainEvent]]
    * or subclasses.
    *
-   * If `initialStateMode` is [[ClusterEvent.InitialStateAsEvents]] the events corresponding
+   * If `initialStateMode` is `ClusterEvent.InitialStateAsEvents` the events corresponding
    * to the current state will be sent to the subscriber to mimic what you would
    * have seen if you were listening to the events when they occurred in the past.
    *
-   * If `initialStateMode` is [[ClusterEvent.InitialStateAsSnapshot]] a snapshot of
+   * If `initialStateMode` is `ClusterEvent.InitialStateAsSnapshot` a snapshot of
    * [[akka.cluster.ClusterEvent.CurrentClusterState]] will be sent to the subscriber as the
    * first message.
    *
@@ -283,8 +274,8 @@ class Cluster(val system: ExtendedActorSystem) extends Extension {
 
   /**
    * Send command to issue state transition to LEAVING for the node specified by 'address'.
-   * The member will go through the status changes [[MemberStatus.Leaving]] (not published to
-   * subscribers) followed by [[MemberStatus.Exiting]] and finally [[MemberStatus.Removed]].
+   * The member will go through the status changes [[MemberStatus]] `Leaving` (not published to
+   * subscribers) followed by [[MemberStatus]] `Exiting` and finally [[MemberStatus]] `Removed`.
    *
    * Note that this command can be issued to any member in the cluster, not necessarily the
    * one that is leaving. The cluster extension, but not the actor system or JVM, of the
@@ -309,21 +300,40 @@ class Cluster(val system: ExtendedActorSystem) extends Extension {
 
   /**
    * The supplied thunk will be run, once, when current cluster member is `Up`.
-   * Typically used together with configuration option `akka.cluster.min-nr-of-members'
+   * Typically used together with configuration option `akka.cluster.min-nr-of-members`
    * to defer some action, such as starting actors, until the cluster has reached
    * a certain size.
    */
   def registerOnMemberUp[T](code: ⇒ T): Unit =
-    registerOnMemberUp(new Runnable { def run = code })
+    registerOnMemberUp(new Runnable { def run() = code })
 
   /**
    * Java API: The supplied callback will be run, once, when current cluster member is `Up`.
-   * Typically used together with configuration option `akka.cluster.min-nr-of-members'
+   * Typically used together with configuration option `akka.cluster.min-nr-of-members`
    * to defer some action, such as starting actors, until the cluster has reached
    * a certain size.
    */
-  def registerOnMemberUp(callback: Runnable): Unit = clusterDaemons ! InternalClusterAction.AddOnMemberUpListener(callback)
+  def registerOnMemberUp(callback: Runnable): Unit =
+    clusterDaemons ! InternalClusterAction.AddOnMemberUpListener(callback)
+  /**
+   * The supplied thunk will be run, once, when current cluster member is `Removed`.
+   * and if the cluster have been shutdown,that thunk will run on the caller thread immediately.
+   * Typically used together `cluster.leave(cluster.selfAddress)` and then `system.shutdown()`.
+   */
+  def registerOnMemberRemoved[T](code: ⇒ T): Unit =
+    registerOnMemberRemoved(new Runnable { override def run(): Unit = code })
 
+  /**
+   * Java API: The supplied thunk will be run, once, when current cluster member is `Removed`.
+   * and if the cluster have been shutdown,that thunk will run on the caller thread immediately.
+   * Typically used together `cluster.leave(cluster.selfAddress)` and then `system.shutdown()`.
+   */
+  def registerOnMemberRemoved(callback: Runnable): Unit = {
+    if (_isTerminated.get())
+      callback.run()
+    else
+      clusterDaemons ! InternalClusterAction.AddOnMemberRemovedListener(callback)
+  }
   // ========================================================
   // ===================== INTERNAL API =====================
   // ========================================================
@@ -334,7 +344,7 @@ class Cluster(val system: ExtendedActorSystem) extends Extension {
    * Shuts down all connections to other members, the cluster daemon and the periodic gossip and cleanup tasks.
    *
    * Should not called by the user. The user can issue a LEAVE command which will tell the node
-   * to go through graceful handoff process `LEAVE -> EXITING -> REMOVED -> SHUTDOWN`.
+   * to go through graceful handoff process `LEAVE -&gt; EXITING -&gt; REMOVED -&gt; SHUTDOWN`.
    */
   private[cluster] def shutdown(): Unit = {
     if (_isTerminated.compareAndSet(false, true)) {

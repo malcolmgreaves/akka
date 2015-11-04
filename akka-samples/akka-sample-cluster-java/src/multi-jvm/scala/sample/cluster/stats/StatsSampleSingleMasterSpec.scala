@@ -14,18 +14,36 @@ import akka.cluster.Member
 import akka.cluster.MemberStatus
 import akka.cluster.ClusterEvent.CurrentClusterState
 import akka.cluster.ClusterEvent.MemberUp
-import akka.contrib.pattern.ClusterSingletonManager
-import akka.contrib.pattern.ClusterSingletonProxy
+import akka.cluster.singleton.ClusterSingletonManager
+import akka.cluster.singleton.ClusterSingletonManagerSettings
+import akka.cluster.singleton.ClusterSingletonProxy
 import akka.remote.testkit.MultiNodeConfig
 import akka.remote.testkit.MultiNodeSpec
 import akka.testkit.ImplicitSender
 import sample.cluster.stats.StatsMessages._
+import akka.cluster.singleton.ClusterSingletonProxySettings
 
 object StatsSampleSingleMasterSpecConfig extends MultiNodeConfig {
   // register the named roles (nodes) of the test
   val first = role("first")
   val second = role("second")
   val third = role("thrid")
+
+  def nodeList = Seq(first, second, third)
+
+  // Extract individual sigar library for every node.
+  nodeList foreach { role ⇒
+    nodeConfig(role) {
+      ConfigFactory.parseString(s"""
+      # Disable legacy metrics in akka-cluster.
+      akka.cluster.metrics.enabled=off
+      # Enable metrics extension in akka-cluster-metrics.
+      akka.extensions=["akka.cluster.metrics.ClusterMetricsExtension"]
+      # Sigar native library extract location during tests.
+      akka.cluster.metrics.native-library-extract-folder=target/native/${role.name}
+      """)
+    }
+  }
 
   // this configuration will be used for all nodes
   // note that no fixed host names and ports are used
@@ -34,8 +52,6 @@ object StatsSampleSingleMasterSpecConfig extends MultiNodeConfig {
     akka.actor.provider = "akka.cluster.ClusterActorRefProvider"
     akka.remote.log-remote-lifecycle-events = off
     akka.cluster.roles = [compute]
-    # don't use sigar for tests, native lib not in path
-    akka.cluster.metrics.collector-class = akka.cluster.JmxMetricsCollector
     #//#router-deploy-config
     akka.actor.deployment {
       /singleton/statsService/workerRouter {
@@ -86,14 +102,14 @@ abstract class StatsSampleSingleMasterSpec extends MultiNodeSpec(StatsSampleSing
 
       Cluster(system).unsubscribe(testActor)
 
-      system.actorOf(ClusterSingletonManager.defaultProps(
+      system.actorOf(ClusterSingletonManager.props(
         Props[StatsService],
-        singletonName = "statsService",
         terminationMessage = PoisonPill,
-        role = null), name = "singleton")
+        settings = ClusterSingletonManagerSettings(system).withSingletonName("statsService")),
+        name = "singleton")
 
-      system.actorOf(ClusterSingletonProxy.defaultProps("/user/singleton/statsService",
-        "compute"), "statsServiceProxy");
+      system.actorOf(ClusterSingletonProxy.props("/user/singleton/statsService",
+        ClusterSingletonProxySettings(system).withRole("compute")), "statsServiceProxy")
 
       testConductor.enter("all-up")
     }

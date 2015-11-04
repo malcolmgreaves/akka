@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.routing
 
@@ -120,7 +120,7 @@ private[akka] final case class TailChoppingRoutees(
  */
 @SerialVersionUID(1L)
 final case class TailChoppingPool(
-  val nrOfInstances: Int, override val resizer: Option[Resizer] = None,
+  override val nrOfInstances: Int, override val resizer: Option[Resizer] = None,
   within: FiniteDuration,
   interval: FiniteDuration,
   override val supervisorStrategy: SupervisorStrategy = Pool.defaultSupervisorStrategy,

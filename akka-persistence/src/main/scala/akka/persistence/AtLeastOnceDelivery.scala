@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2014-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.persistence
 
@@ -19,7 +19,7 @@ object AtLeastOnceDelivery {
    * Snapshot of current `AtLeastOnceDelivery` state. Can be retrieved with
    * [[AtLeastOnceDelivery#getDeliverySnapshot]] and saved with [[PersistentActor#saveSnapshot]].
    * During recovery the snapshot received in [[SnapshotOffer]] should be set
-   * with [[AtLeastOnceDelivery.setDeliverySnapshot]].
+   * with [[AtLeastOnceDelivery#setDeliverySnapshot]].
    */
   @SerialVersionUID(1L)
   case class AtLeastOnceDeliverySnapshot(currentDeliveryId: Long, unconfirmedDeliveries: immutable.Seq[UnconfirmedDelivery])

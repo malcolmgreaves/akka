@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.actor
 
@@ -18,6 +18,7 @@ import com.typesafe.config.Config
 import java.util.concurrent.{ LinkedBlockingQueue, BlockingQueue, TimeUnit }
 import akka.util.Switch
 import akka.util.Helpers.ConfigOps
+import scala.util.control.NoStackTrace
 
 class JavaExtensionSpec extends JavaExtension with JUnitSuiteLike
 
@@ -28,6 +29,23 @@ object TestExtension extends ExtensionId[TestExtension] with ExtensionIdProvider
 
 // Dont't place inside ActorSystemSpec object, since it will not be garbage collected and reference to system remains
 class TestExtension(val system: ExtendedActorSystem) extends Extension
+
+object FailingTestExtension extends ExtensionId[FailingTestExtension] with ExtensionIdProvider {
+  def lookup = this
+  def createExtension(s: ExtendedActorSystem) = new FailingTestExtension(s)
+
+  class TestException extends IllegalArgumentException("ERR") with NoStackTrace
+}
+
+// Dont't place inside ActorSystemSpec object, since it will not be garbage collected and reference to system remains
+class FailingTestExtension(val system: ExtendedActorSystem) extends Extension {
+  // first time the actor is created
+  val ref = system.actorOf(Props.empty, "uniqueName")
+  // but the extension initialization fails
+  // second time it will throw exception when trying to create actor with same name,
+  // but we want to see the first exception every time
+  throw new FailingTestExtension.TestException
+}
 
 object ActorSystemSpec {
 
@@ -138,7 +156,7 @@ class ActorSystemSpec extends AkkaSpec(ActorSystemSpec.config) with ImplicitSend
   "An ActorSystem" must {
 
     "use scala.concurrent.Future's InternalCallbackEC" in {
-      system.asInstanceOf[ActorSystemImpl].internalCallingThreadExecutionContext.getClass.getName should be("scala.concurrent.Future$InternalCallbackExecutor$")
+      system.asInstanceOf[ActorSystemImpl].internalCallingThreadExecutionContext.getClass.getName should ===("scala.concurrent.Future$InternalCallbackExecutor$")
     }
 
     "reject invalid names" in {
@@ -163,9 +181,19 @@ class ActorSystemSpec extends AkkaSpec(ActorSystemSpec.config) with ImplicitSend
 
     "support extensions" in {
       // TestExtension is configured and should be loaded at startup
-      system.hasExtension(TestExtension) should be(true)
-      TestExtension(system).system should be(system)
-      system.extension(TestExtension).system should be(system)
+      system.hasExtension(TestExtension) should ===(true)
+      TestExtension(system).system should ===(system)
+      system.extension(TestExtension).system should ===(system)
+    }
+
+    "handle extensions that fail to initialize" in {
+      intercept[FailingTestExtension.TestException] {
+        FailingTestExtension(system)
+      }
+      // same exception should be reported next time
+      intercept[FailingTestExtension.TestException] {
+        FailingTestExtension(system)
+      }
     }
 
     "log dead letters" in {
@@ -200,7 +228,7 @@ class ActorSystemSpec extends AkkaSpec(ActorSystemSpec.config) with ImplicitSend
 
       val expected = (for (i ← 1 to count) yield i).reverse
 
-      immutableSeq(result) should be(expected)
+      immutableSeq(result) should ===(expected)
     }
 
     "awaitTermination after termination callbacks" in {
@@ -217,22 +245,22 @@ class ActorSystemSpec extends AkkaSpec(ActorSystemSpec.config) with ImplicitSend
 
       system2.awaitTermination(5 seconds)
       Await.ready(system2.whenTerminated, 5 seconds)
-      callbackWasRun should be(true)
+      callbackWasRun should ===(true)
     }
 
     "return isTerminated status correctly" in {
       val system = ActorSystem().asInstanceOf[ActorSystemImpl]
-      system.isTerminated should be(false)
+      system.isTerminated should ===(false)
       val wt = system.whenTerminated
-      wt.isCompleted should be(false)
+      wt.isCompleted should ===(false)
       val f = system.terminate()
       val terminated = Await.result(wt, 10 seconds)
-      terminated.actor should be(system.provider.rootGuardian)
-      terminated.addressTerminated should be(true)
-      terminated.existenceConfirmed should be(true)
+      terminated.actor should ===(system.provider.rootGuardian)
+      terminated.addressTerminated should ===(true)
+      terminated.existenceConfirmed should ===(true)
       terminated should be theSameInstanceAs Await.result(f, 10 seconds)
       system.awaitTermination(10 seconds)
-      system.isTerminated should be(true)
+      system.isTerminated should ===(true)
     }
 
     "throw RejectedExecutionException when shutdown" in {
@@ -242,25 +270,25 @@ class ActorSystemSpec extends AkkaSpec(ActorSystemSpec.config) with ImplicitSend
 
       intercept[RejectedExecutionException] {
         system2.registerOnTermination { println("IF YOU SEE THIS THEN THERE'S A BUG HERE") }
-      }.getMessage should be("ActorSystem already terminated.")
+      }.getMessage should ===("ActorSystem already terminated.")
     }
 
     "reliably create waves of actors" in {
       import system.dispatcher
       implicit val timeout = Timeout((20 seconds).dilated)
       val waves = for (i ← 1 to 3) yield system.actorOf(Props[ActorSystemSpec.Waves]) ? 50000
-      Await.result(Future.sequence(waves), timeout.duration + 5.seconds) should be(Seq("done", "done", "done"))
+      Await.result(Future.sequence(waves), timeout.duration + 5.seconds) should ===(Vector("done", "done", "done"))
     }
 
     "find actors that just have been created" in {
       system.actorOf(Props(new FastActor(TestLatch(), testActor)).withDispatcher("slow"))
-      expectMsgType[Class[_]] should be(classOf[LocalActorRef])
+      expectMsgType[Class[_]] should ===(classOf[LocalActorRef])
     }
 
     "reliable deny creation of actors while shutting down" in {
       val system = ActorSystem()
       import system.dispatcher
-      system.scheduler.scheduleOnce(200 millis) { system.terminate() }
+      system.scheduler.scheduleOnce(100 millis) { system.terminate() }
       var failing = false
       var created = Vector.empty[ActorRef]
       while (!system.whenTerminated.isCompleted) {
@@ -268,6 +296,7 @@ class ActorSystemSpec extends AkkaSpec(ActorSystemSpec.config) with ImplicitSend
           val t = system.actorOf(Props[ActorSystemSpec.Terminater])
           failing should not be true // because once failing => always failing (it’s due to shutdown)
           created :+= t
+          if (created.size % 1000 == 0) Thread.sleep(20) // in case of unfair thread scheduling
         } catch {
           case _: IllegalStateException ⇒ failing = true
         }
@@ -279,7 +308,7 @@ class ActorSystemSpec extends AkkaSpec(ActorSystemSpec.config) with ImplicitSend
         }
       }
 
-      created filter (ref ⇒ !ref.isTerminated && !ref.asInstanceOf[ActorRefWithCell].underlying.isInstanceOf[UnstartedCell]) should be(Seq())
+      created filter (ref ⇒ !ref.isTerminated && !ref.asInstanceOf[ActorRefWithCell].underlying.isInstanceOf[UnstartedCell]) should ===(Seq.empty[ActorRef])
     }
 
     "shut down when /user fails" in {
@@ -305,8 +334,8 @@ class ActorSystemSpec extends AkkaSpec(ActorSystemSpec.config) with ImplicitSend
         a ! "die"
       }
       val t = probe.expectMsg(Terminated(a)(existenceConfirmed = true, addressTerminated = false))
-      t.existenceConfirmed should be(true)
-      t.addressTerminated should be(false)
+      t.existenceConfirmed should ===(true)
+      t.addressTerminated should ===(false)
       shutdown(system)
     }
 
@@ -372,6 +401,20 @@ class ActorSystemSpec extends AkkaSpec(ActorSystemSpec.config) with ImplicitSend
       } finally {
         shutdown(system2)
       }
+    }
+
+    "not allow top-level actor creation with custom guardian" in {
+      val sys = new ActorSystemImpl("custom", ConfigFactory.defaultReference(),
+        getClass.getClassLoader, None, Some(Props.empty))
+      sys.start()
+      try {
+        intercept[UnsupportedOperationException] {
+          sys.actorOf(Props.empty)
+        }
+        intercept[UnsupportedOperationException] {
+          sys.actorOf(Props.empty, "empty")
+        }
+      } finally shutdown(sys)
     }
   }
 

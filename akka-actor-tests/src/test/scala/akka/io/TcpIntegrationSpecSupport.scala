@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.io
@@ -9,7 +9,7 @@ import scala.collection.immutable
 import akka.testkit.{ AkkaSpec, TestProbe }
 import akka.actor.ActorRef
 import akka.io.Inet.SocketOption
-import akka.TestUtils._
+import akka.testkit.SocketUtil._
 import Tcp._
 
 trait TcpIntegrationSpecSupport { _: AkkaSpec ⇒

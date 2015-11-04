@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.actor.dsl
@@ -157,8 +157,8 @@ trait Inbox { this: ActorDSL.type ⇒
 
   /**
    * Create a new actor which will internally queue up messages it gets so that
-   * they can be interrogated with the [[akka.actor.dsl.Inbox!.Inbox!.receive]]
-   * and [[akka.actor.dsl.Inbox!.Inbox!.select]] methods. It will be created as
+   * they can be interrogated with the `akka.actor.dsl.Inbox!.Inbox!.receive`
+   * and `akka.actor.dsl.Inbox!.Inbox!.select` methods. It will be created as
    * a system actor in the ActorSystem which is implicitly (or explicitly)
    * supplied.
    */

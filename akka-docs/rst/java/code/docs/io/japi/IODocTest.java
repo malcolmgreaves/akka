@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package docs.io.japi;
@@ -39,6 +39,10 @@ public class IODocTest {
     
     public Server(ActorRef manager) {
       this.manager = manager;
+    }
+    
+    public static Props props(ActorRef manager) {
+      return Props.create(Server.class, manager);
     }
 
     @Override
@@ -90,6 +94,10 @@ public class IODocTest {
     
     final InetSocketAddress remote;
     final ActorRef listener;
+    
+    public static Props props(InetSocketAddress remote, ActorRef listener) {
+        return Props.create(Client.class, remote, listener);
+    }
 
     public Client(InetSocketAddress remote, ActorRef listener) {
       this.remote = remote;
@@ -150,9 +158,9 @@ public class IODocTest {
     new JavaTestKit(system) {
       {
         @SuppressWarnings("unused")
-        final ActorRef server = system.actorOf(Props.create(Server.class, getRef()), "server1");
+        final ActorRef server = system.actorOf(Server.props(getRef()), "server1");
         final InetSocketAddress listen = expectMsgClass(Bound.class).localAddress();
-        final ActorRef client = system.actorOf(Props.create(Client.class, listen, getRef()), "client1");
+        final ActorRef client = system.actorOf(Client.props(listen, getRef()), "client1");
         
         final Connected c1 = expectMsgClass(Connected.class);
         final Connected c2 = expectMsgClass(Connected.class);

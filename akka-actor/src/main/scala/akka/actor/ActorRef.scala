@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.actor
@@ -39,6 +39,7 @@ object ActorRef {
  * Scala:
  * {{{
  * import akka.pattern.ask
+ * import scala.concurrent.Await
  *
  * class ExampleActor extends Actor {
  *   val other = context.actorOf(Props[OtherActor], "childName") // will be destroyed and re-created upon restart by default
@@ -48,7 +49,9 @@ object ActorRef {
  *     case Request2(msg) => other.tell(msg, sender()) // forward sender reference, enabling direct reply
  *     case Request3(msg) =>
  *       implicit val timeout = Timeout(5.seconds)
- *       sender() ! (other ? msg)  // will reply with a Future for holding other's reply
+ *       (other ? msg) pipeTo sender()
+ *       // the ask call will get a future from other's reply
+ *       // when the future is complete, send its value to the original sender
  *   }
  * }
  * }}}
@@ -56,6 +59,7 @@ object ActorRef {
  * Java:
  * {{{
  * import static akka.pattern.Patterns.ask;
+ * import static akka.pattern.Patterns.pipe;
  *
  * public class ExampleActor extends UntypedActor {
  *   // this child will be destroyed and re-created upon restart by default
@@ -73,7 +77,9 @@ object ActorRef {
  *
  *     } else if (o instanceof Request3) {
  *       Msg msg = ((Request3) o).getMsg();
- *       getSender().tell(ask(other, msg, 5000)); // reply with Future for holding the other's reply (timeout 5 seconds)
+ *       pipe(ask(other, msg, 5000)).to(getSender());
+ *       // the ask call will get a future from other's reply
+ *       // when the future is complete, send its value to the original sender
  *
  *     } else {
  *       unhandled(o);
@@ -89,9 +95,6 @@ object ActorRef {
  * Two actor references are compared equal when they have the same path and point to
  * the same actor incarnation. A reference pointing to a terminated actor doesn't compare
  * equal to a reference pointing to another (re-created) actor with the same path.
- * Actor references acquired with `actorFor` do not always include the full information
- * about the underlying actor identity and therefore such references do not always compare
- * equal to references acquired with `actorOf`, `sender`, or `context.self`.
  *
  * If you need to keep track of actor references in a collection and do not care
  * about the exact actor incarnation you can use the ``ActorPath`` as key because
@@ -118,7 +121,7 @@ abstract class ActorRef extends java.lang.Comparable[ActorRef] with Serializable
    * Sends the specified message to this ActorRef, i.e. fire-and-forget
    * semantics, including the sender reference if possible.
    *
-   * Pass [[akka.actor.ActorRef$.noSender]] or `null` as sender if there is nobody to reply to
+   * Pass [[akka.actor.ActorRef]] `noSender` or `null` as sender if there is nobody to reply to
    */
   final def tell(msg: Any, sender: ActorRef): Unit = this.!(msg)(sender)
 
@@ -130,11 +133,13 @@ abstract class ActorRef extends java.lang.Comparable[ActorRef] with Serializable
   def forward(message: Any)(implicit context: ActorContext) = tell(message, context.sender())
 
   /**
+   * INTERNAL API
    * Is the actor shut down?
    * The contract is that if this method returns true, then it will never be false again.
    * But you cannot rely on that it is alive if it returns false, since this by nature is a racy method.
    */
-  @deprecated("Use context.watch(actor) and receive Terminated(actor)", "2.2") def isTerminated: Boolean
+  @deprecated("Use context.watch(actor) and receive Terminated(actor)", "2.2")
+  private[akka] def isTerminated: Boolean
 
   final override def hashCode: Int = {
     if (path.uid == ActorCell.undefinedUid) path.hashCode
@@ -157,7 +162,7 @@ abstract class ActorRef extends java.lang.Comparable[ActorRef] with Serializable
 /**
  * This trait represents the Scala Actor API
  * There are implicit conversions in ../actor/Implicits.scala
- * from ActorRef -> ScalaActorRef and back
+ * from ActorRef -&gt; ScalaActorRef and back
  */
 trait ScalaActorRef { ref: ActorRef ⇒
 
@@ -250,10 +255,10 @@ private[akka] abstract class InternalActorRef extends ActorRef with ScalaActorRe
   def isLocal: Boolean
 
   /**
-   * Returns “true” if the actor is locally known to be terminated, “false” if
+   * INTERNAL API: Returns “true” if the actor is locally known to be terminated, “false” if
    * alive or uncertain.
    */
-  def isTerminated: Boolean
+  private[akka] def isTerminated: Boolean
 }
 
 /**
@@ -322,11 +327,11 @@ private[akka] class LocalActorRef private[akka] (
   protected def actorContext: ActorContext = actorCell
 
   /**
-   * Is the actor terminated?
+   * INTERNAL API: Is the actor terminated?
    * If this method returns true, it will never return false again, but if it
    * returns false, you cannot be sure if it's alive still (race condition)
    */
-  @deprecated("Use context.watch(actor) and receive Terminated(actor)", "2.2") override def isTerminated: Boolean = actorCell.isTerminated
+  override private[akka] def isTerminated: Boolean = actorCell.isTerminated
 
   /**
    * Starts the actor after initialization.
@@ -448,7 +453,8 @@ private[akka] trait MinimalActorRef extends InternalActorRef with LocalRef {
   override def suspend(): Unit = ()
   override def resume(causedByFailure: Throwable): Unit = ()
   override def stop(): Unit = ()
-  @deprecated("Use context.watch(actor) and receive Terminated(actor)", "2.2") override def isTerminated = false
+  @deprecated("Use context.watch(actor) and receive Terminated(actor)", "2.2")
+  override private[akka] def isTerminated = false
 
   override def !(message: Any)(implicit sender: ActorRef = Actor.noSender): Unit = ()
 
@@ -514,7 +520,8 @@ private[akka] class EmptyLocalActorRef(override val provider: ActorRefProvider,
                                        override val path: ActorPath,
                                        val eventStream: EventStream) extends MinimalActorRef {
 
-  @deprecated("Use context.watch(actor) and receive Terminated(actor)", "2.2") override def isTerminated = true
+  @deprecated("Use context.watch(actor) and receive Terminated(actor)", "2.2")
+  override private[akka] def isTerminated = true
 
   override def sendSystemMessage(message: SystemMessage): Unit = {
     if (Mailbox.debug) println(s"ELAR $path having enqueued $message")
@@ -598,6 +605,38 @@ private[akka] class VirtualPathContainer(
   val log: LoggingAdapter) extends MinimalActorRef {
 
   private val children = new ConcurrentHashMap[String, InternalActorRef]
+
+  /**
+   * In [[ActorSelectionMessage]]s only [[SelectChildName]] elements
+   * are supported, otherwise messages are sent to [[EmptyLocalActorRef]].
+   */
+  override def !(message: Any)(implicit sender: ActorRef = Actor.noSender): Unit = message match {
+    case sel @ ActorSelectionMessage(msg, elements, wildcardFanOut) ⇒ {
+      require(elements.nonEmpty)
+
+      def emptyRef = new EmptyLocalActorRef(provider, path / sel.elements.map(_.toString),
+        provider.systemGuardian.underlying.system.eventStream)
+
+      elements.head match {
+        case SelectChildName(name) ⇒
+          getChild(name) match {
+            case null ⇒
+              if (!wildcardFanOut)
+                emptyRef.tell(msg, sender)
+            case child ⇒
+              if (elements.tail.isEmpty) {
+                child ! msg
+              } else if (!wildcardFanOut) {
+                emptyRef.tell(msg, sender)
+              }
+          }
+        case _ ⇒
+          if (!wildcardFanOut)
+            emptyRef.tell(msg, sender)
+      }
+    }
+    case _ ⇒ super.!(message)
+  }
 
   def addChild(name: String, ref: InternalActorRef): Unit = {
     children.put(name, ref) match {

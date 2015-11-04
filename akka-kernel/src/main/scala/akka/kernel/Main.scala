@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.kernel
@@ -42,6 +42,7 @@ import scala.collection.JavaConverters._
  * bin/akka org.app.BootApp
  * }}}
  */
+@deprecated("Microkernel is deprecated. Use ordinary main class instead", "2.4")
 trait Bootable {
   /**
    * Callback run on microkernel startup.
@@ -59,6 +60,7 @@ trait Bootable {
 /**
  * Main class for running the microkernel.
  */
+@deprecated("Microkernel is deprecated. Use ordinary main class instead.", "2.4")
 object Main {
   private val quiet = getBoolean("akka.kernel.quiet")
 
@@ -181,6 +183,7 @@ object Main {
   NNNNNNDDNNNNNNNN    NNNNN     =NNNNN   $NNNN+     DNNNN?  DNNNNNNDNNNNNNNND
    NNNNNNNNN  NNNN$   NNNNN      8NNNND  $NNNN+      NNNNN=  ,DNNNNNNND NNNNN$
 
+Microkernel is deprecated. Use ordinary main class instead.
 ==============================================================================
 """
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.remote.transport
 
@@ -14,6 +14,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{ ExecutionContext, Promise, Future }
 import akka.dispatch.{ UnboundedMessageQueueSemantics, RequiresMessageQueue }
 import akka.remote.transport.AssociationHandle.DisassociateInfo
+import akka.actor.DeadLetterSuppression
 
 trait TransportAdapterProvider {
   /**
@@ -89,7 +90,18 @@ abstract class AbstractTransportAdapter(protected val wrappedTransport: Transpor
     } yield (augmentScheme(listenAddress), upstreamListenerPromise)
   }
 
-  override def boundAddress: Address = wrappedTransport.boundAddress
+  /**
+   * INTERNAL API
+   * @return
+   *  The address this Transport is listening to.
+   */
+  private[akka] def boundAddress: Address = wrappedTransport match {
+    // Need to do like this in the backport of #15007 to 2.3.x for binary compatibility reasons
+    case t: AbstractTransportAdapter ⇒ t.boundAddress
+    case t: netty.NettyTransport     ⇒ t.boundAddress
+    case t: TestTransport            ⇒ t.boundAddress
+    case _                           ⇒ null
+  }
 
   override def associate(remoteAddress: Address): Future[AssociationHandle] = {
     // Prepare a future, and pass its promise to the manager
@@ -128,7 +140,8 @@ object ActorTransportAdapter {
   final case class AssociateUnderlying(remoteAddress: Address, statusPromise: Promise[AssociationHandle]) extends TransportOperation
   final case class ListenUnderlying(listenAddress: Address,
                                     upstreamListener: Future[AssociationEventListener]) extends TransportOperation
-  final case class DisassociateUnderlying(info: DisassociateInfo = AssociationHandle.Unknown) extends TransportOperation
+  final case class DisassociateUnderlying(info: DisassociateInfo = AssociationHandle.Unknown)
+    extends TransportOperation with DeadLetterSuppression
 
   implicit val AskTimeout = Timeout(5.seconds)
 }

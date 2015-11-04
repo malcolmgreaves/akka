@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.dispatch
 
@@ -8,13 +8,12 @@ import java.util.concurrent._
 import akka.AkkaException
 import akka.dispatch.sysmsg._
 import akka.actor.{ ActorCell, ActorRef, Cell, ActorSystem, InternalActorRef, DeadLetter }
-import akka.util.{ Unsafe, BoundedBlockingQueue }
+import akka.util.{ BoundedBlockingQueue, StablePriorityBlockingQueue, StablePriorityQueue, Unsafe }
 import akka.util.Helpers.ConfigOps
 import akka.event.Logging.Error
-import scala.concurrent.duration.Duration
-import scala.concurrent.duration.FiniteDuration
-import scala.annotation.tailrec
+import scala.concurrent.duration.{ Duration, FiniteDuration }
 import scala.concurrent.forkjoin.ForkJoinTask
+import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import com.typesafe.config.Config
 import java.util.concurrent.atomic.AtomicInteger
@@ -691,6 +690,48 @@ class BoundedPriorityMailbox( final val cmp: Comparator[Envelope], final val cap
 object BoundedPriorityMailbox {
   class MessageQueue(capacity: Int, cmp: Comparator[Envelope], val pushTimeOut: Duration)
     extends BoundedBlockingQueue[Envelope](capacity, new PriorityQueue[Envelope](11, cmp))
+    with BoundedQueueBasedMessageQueue {
+    final def queue: BlockingQueue[Envelope] = this
+  }
+}
+
+/**
+ * UnboundedStablePriorityMailbox is an unbounded mailbox that allows for prioritization of its contents.  Unlike the
+ * [[UnboundedPriorityMailbox]] it preserves ordering for messages of equal priority.
+ * Extend this class and provide the Comparator in the constructor.
+ */
+class UnboundedStablePriorityMailbox(val cmp: Comparator[Envelope], val initialCapacity: Int)
+  extends MailboxType with ProducesMessageQueue[UnboundedStablePriorityMailbox.MessageQueue] {
+  def this(cmp: Comparator[Envelope]) = this(cmp, 11)
+  final override def create(owner: Option[ActorRef], system: Option[ActorSystem]): MessageQueue =
+    new UnboundedStablePriorityMailbox.MessageQueue(initialCapacity, cmp)
+}
+
+object UnboundedStablePriorityMailbox {
+  class MessageQueue(initialCapacity: Int, cmp: Comparator[Envelope])
+    extends StablePriorityBlockingQueue[Envelope](initialCapacity, cmp) with UnboundedQueueBasedMessageQueue {
+    final def queue: Queue[Envelope] = this
+  }
+}
+
+/**
+ * BoundedStablePriorityMailbox is a bounded mailbox that allows for prioritization of its contents.  Unlike the
+ * [[BoundedPriorityMailbox]] it preserves ordering for messages of equal priority.
+ * Extend this class and provide the Comparator in the constructor.
+ */
+class BoundedStablePriorityMailbox( final val cmp: Comparator[Envelope], final val capacity: Int, final val pushTimeOut: Duration)
+  extends MailboxType with ProducesMessageQueue[BoundedStablePriorityMailbox.MessageQueue] {
+
+  if (capacity < 0) throw new IllegalArgumentException("The capacity for BoundedMailbox can not be negative")
+  if (pushTimeOut eq null) throw new IllegalArgumentException("The push time-out for BoundedMailbox can not be null")
+
+  final override def create(owner: Option[ActorRef], system: Option[ActorSystem]): MessageQueue =
+    new BoundedStablePriorityMailbox.MessageQueue(capacity, cmp, pushTimeOut)
+}
+
+object BoundedStablePriorityMailbox {
+  class MessageQueue(capacity: Int, cmp: Comparator[Envelope], val pushTimeOut: Duration)
+    extends BoundedBlockingQueue[Envelope](capacity, new StablePriorityQueue[Envelope](11, cmp))
     with BoundedQueueBasedMessageQueue {
     final def queue: BlockingQueue[Envelope] = this
   }

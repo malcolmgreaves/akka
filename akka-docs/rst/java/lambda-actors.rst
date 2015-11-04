@@ -51,7 +51,7 @@ function there is a builder named ``ReceiveBuilder`` that you can use.
 
 Here is an example:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/MyActor.java
+.. includecode:: code/docs/actorlambda/MyActor.java
    :include: imports,my-actor
 
 Please note that the Akka Actor ``receive`` message loop is exhaustive, which
@@ -80,8 +80,8 @@ creating an actor including associated deployment information (e.g. which
 dispatcher to use, see more below). Here are some examples of how to create a
 :class:`Props` instance.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#import-props
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#creating-props
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#import-props
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#creating-props
 
 The second variant shows how to pass constructor arguments to the
 :class:`Actor` being created, but it should only be used outside of actors as
@@ -90,13 +90,13 @@ explained below.
 The last line shows a possibility to pass constructor arguments regardless of
 the context it is being used in. The presence of a matching constructor is
 verified during construction of the :class:`Props` object, resulting in an
-:class:`IllegalArgumentEception` if no or multiple matching constructors are
+:class:`IllegalArgumentException` if no or multiple matching constructors are
 found.
 
 Dangerous Variants
 ^^^^^^^^^^^^^^^^^^
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#creating-props-deprecated
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#creating-props-deprecated
 
 This method is not recommended to be used within another actor because it
 encourages to close over the enclosing scope, resulting in non-serializable
@@ -128,7 +128,14 @@ associated with using the ``Props.create(...)`` method which takes a by-name
 argument, since within a companion object the given code block will not retain
 a reference to its enclosing scope:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#props-factory
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#props-factory
+
+Another good practice is to declare what messages an Actor can receive
+as close to the actor definition as possible (e.g. as static classes
+inside the Actor or using other suitable class), which makes it easier to know
+what it can receive.
+
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#messages-in-companion
 
 Creating Actors with Props
 --------------------------
@@ -137,14 +144,14 @@ Actors are created by passing a :class:`Props` instance into the
 :meth:`actorOf` factory method which is available on :class:`ActorSystem` and
 :class:`ActorContext`.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#import-actorRef
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#system-actorOf
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#import-actorRef
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#system-actorOf
 
 Using the :class:`ActorSystem` will create top-level actors, supervised by the
 actor system’s provided guardian actor, while using an actor’s context will
 create a child actor.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#context-actorOf
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#context-actorOf
    :exclude: plus-some-behavior
 
 It is recommended to create a hierarchy of children, grand-children and so on
@@ -314,7 +321,7 @@ termination (see `Stopping Actors`_). This service is provided by the
 
 Registering a monitor is easy:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#watch
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#watch
 
 It should be noted that the :class:`Terminated` message is generated
 independent of the order in which registration and termination occur.
@@ -341,7 +348,7 @@ Start Hook
 
 Right after starting the actor, its :meth:`preStart` method is invoked.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#preStart
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#preStart
 
 This method is called when the actor is first created. During restarts it is
 called by the default implementation of :meth:`postRestart`, which means that
@@ -420,7 +427,19 @@ actors may look up other actors by specifying absolute or relative
 paths—logical or physical—and receive back an :class:`ActorSelection` with the
 result:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#selection-local
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#selection-local
+
+.. note::
+
+  It is always preferable to communicate with other Actors using their ActorRef
+  instead of relying upon ActorSelection. Exceptions are
+
+    * sending messages using the :ref:`at-least-once-delivery-java-lambda` facility
+    * initiating first contact with a remote system
+
+  In all other cases ActorRefs can be provided during Actor creation or
+  initialization, passing them from parent to child or introducing Actors by
+  sending their ActorRefs to other Actors within messages.
 
 The supplied path is parsed as a :class:`java.net.URI`, which basically means
 that it is split on ``/`` into path elements. If the path starts with ``/``, it
@@ -434,7 +453,7 @@ structure, i.e. the supervisor.
 The path elements of an actor selection may contain wildcard patterns allowing for
 broadcasting of messages to that section:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#selection-wildcard
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#selection-wildcard
 
 Messages can be sent via the :class:`ActorSelection` and the path of the
 :class:`ActorSelection` is looked up when delivering each message. If the selection
@@ -450,8 +469,8 @@ actors which are traversed in the sense that if a concrete name lookup fails
 negative result is generated. Please note that this does not mean that delivery
 of that reply is guaranteed, it still is a normal message.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#import-identify
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#identify
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#import-identify
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#identify
 
 You can also acquire an :class:`ActorRef` for an :class:`ActorSelection` with
 the ``resolveOne`` method of the :class:`ActorSelection`. It returns a ``Future``
@@ -461,20 +480,9 @@ didn't complete within the supplied `timeout`.
 
 Remote actor addresses may also be looked up, if :ref:`remoting <remoting-java>` is enabled:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#selection-remote
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#selection-remote
 
 An example demonstrating actor look-up is given in :ref:`remote-sample-java`.
-
-.. note::
-
-  ``actorFor`` is deprecated in favor of ``actorSelection`` because actor references
-  acquired with ``actorFor`` behaves different for local and remote actors.
-  In the case of a local actor reference, the named actor needs to exist before the
-  lookup, or else the acquired reference will be an :class:`EmptyLocalActorRef`.
-  This will be true even if an actor with that exact path is created after acquiring
-  the actor reference. For remote actor references acquired with `actorFor` the
-  behaviour is different and sending messages to such a reference will under the hood
-  look up the actor by path on the remote system for every message send.
 
 Messages and immutability
 =========================
@@ -518,7 +526,7 @@ Tell: Fire-forget
 This is the preferred way of sending messages. No blocking waiting for a
 message. This gives the best concurrency and scalability characteristics.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#tell
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#tell
 
 The sender reference is passed along with the message and available within the
 receiving actor via its :meth:`sender()` method while processing this
@@ -558,7 +566,7 @@ more below.
     To complete the future with an exception you need send a Failure message to the sender.
     This is *not done automatically* when an actor throws an exception while processing a message.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#reply-exception
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#reply-exception
 
 If the actor does not complete the future, it will expire after the timeout period,
 specified as parameter to the ``ask`` method; this will complete the
@@ -589,7 +597,7 @@ original sender address/reference is maintained even though the message is going
 through a 'mediator'. This can be useful when writing actors that work as
 routers, load-balancers, replicators etc.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#forward
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#forward
 
 Receive messages
 ================
@@ -597,13 +605,13 @@ Receive messages
 An Actor either has to set its initial receive behavior in the constructor by
 calling the :meth:`receive` method in the :class:`AbstractActor`:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java
+.. includecode:: code/docs/actorlambda/ActorDocTest.java
    :include: receive-constructor
    :exclude: and-some-behavior
 
 or by implementing the :meth:`receive` method in the :class:`Actor` interface:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#receive
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#receive
 
 Both the argument to the :class:`AbstractActor` :meth:`receive` method and the return
 type of the :class:`Actor` :meth:`receive` method is a ``PartialFunction<Object, BoxedUnit>``
@@ -615,7 +623,7 @@ function there is a builder named ``ReceiveBuilder`` that you can use.
 
 Here is an example:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/MyActor.java
+.. includecode:: code/docs/actorlambda/MyActor.java
    :include: imports,my-actor
 
 .. _LambdaActor.Reply:
@@ -630,7 +638,7 @@ for replying later, or passing on to other actors. If there is no sender (a
 message was sent without an actor or future context) then the sender
 defaults to a 'dead-letter' actor ref.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/MyActor.java#reply
+.. includecode:: code/docs/actorlambda/MyActor.java#reply
 
 
 Receive timeout
@@ -648,7 +656,7 @@ timeout there must have been an idle period beforehand as configured via this me
 Once set, the receive timeout stays in effect (i.e. continues firing repeatedly after inactivity
 periods). Pass in `Duration.Undefined` to switch off this feature.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#receive-timeout
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#receive-timeout
 
 .. _stopping-actors-lambda:
 
@@ -685,7 +693,7 @@ whole system.
 The :meth:`postStop()` hook is invoked after an actor is fully stopped. This
 enables cleaning up of resources:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#postStop
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#postStop
    :exclude: clean-up-some-resources
 
 .. note::
@@ -716,7 +724,7 @@ termination of several actors:
 
 .. includecode:: code/docs/actor/UntypedActorDocTest.java#gracefulStop
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#gracefulStop-actor
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#gracefulStop-actor
 
 When ``gracefulStop()`` returns successfully, the actor’s ``postStop()`` hook
 will have been executed: there exists a happens-before edge between the end of
@@ -756,7 +764,7 @@ popped.
 
 To hotswap the Actor behavior using ``become``:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#hot-swap-actor
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#hot-swap-actor
 
 This variant of the :meth:`become` method is useful for many different things,
 such as to implement a Finite State Machine (FSM, for an example see `Dining
@@ -772,7 +780,7 @@ of “pop” operations (i.e. :meth:`unbecome`) matches the number of “push”
 in the long run, otherwise this amounts to a memory leak (which is why this
 behavior is not the default).
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#swapper
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#swapper
 
 
 Stash
@@ -797,7 +805,7 @@ order as they have been received originally. An actor that extends
 
 Here is an example of the ``AbstractActorWithStash`` class in action:
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/ActorDocTest.java#stash
+.. includecode:: code/docs/actorlambda/ActorDocTest.java#stash
 
 Invoking ``stash()`` adds the current message (the message that the
 actor received last) to the actor's stash. It is typically invoked
@@ -930,7 +938,7 @@ for example in the presence of circular dependencies. In this case the actor sho
 and use ``become()`` or a finite state-machine state transition to encode the initialized and uninitialized states
 of the actor.
 
-.. includecode:: ../../../akka-samples/akka-docs-java-lambda/src/test/java/docs/actor/InitializationDocTest.java#messageInit
+.. includecode:: code/docs/actorlambda/InitializationDocTest.java#messageInit
 
 If the actor may receive messages before it has been initialized, a useful tool can be the ``Stash`` to save messages
 until the initialization finishes, and replaying them after the actor became initialized.

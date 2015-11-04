@@ -78,7 +78,7 @@ explained below.
 The last line shows a possibility to pass constructor arguments regardless of
 the context it is being used in. The presence of a matching constructor is
 verified during construction of the :class:`Props` object, resulting in an
-:class:`IllegalArgumentEception` if no or multiple matching constructors are
+:class:`IllegalArgumentException` if no or multiple matching constructors are
 found.
 
 Dangerous Variants
@@ -119,6 +119,12 @@ argument, since within a companion object the given code block will not retain
 a reference to its enclosing scope:
 
 .. includecode:: code/docs/actor/ActorDocSpec.scala#props-factory
+
+Another good practice is to declare what messages an Actor can receive
+in the companion object of the Actor, which makes easier
+to know what it can receive:
+
+.. includecode:: code/docs/actor/ActorDocSpec.scala#messages-in-companion
 
 Creating Actors with Props
 --------------------------
@@ -415,6 +421,18 @@ result:
 
 .. includecode:: code/docs/actor/ActorDocSpec.scala#selection-local
 
+.. note::
+
+  It is always preferable to communicate with other Actors using their ActorRef
+  instead of relying upon ActorSelection. Exceptions are
+
+    * sending messages using the :ref:`at-least-once-delivery` facility
+    * initiating first contact with a remote system
+
+  In all other cases ActorRefs can be provided during Actor creation or
+  initialization, passing them from parent to child or introducing Actors by
+  sending their ActorRefs to other Actors within messages.
+
 The supplied path is parsed as a :class:`java.net.URI`, which basically means
 that it is split on ``/`` into path elements. If the path starts with ``/``, it
 is absolute and the look-up starts at the root guardian (which is the parent of
@@ -456,17 +474,6 @@ Remote actor addresses may also be looked up, if :ref:`remoting <remoting-scala>
 .. includecode:: code/docs/actor/ActorDocSpec.scala#selection-remote
 
 An example demonstrating actor look-up is given in :ref:`remote-sample-scala`.
-
-.. note::
-
-  ``actorFor`` is deprecated in favor of ``actorSelection`` because actor references
-  acquired with ``actorFor`` behaves different for local and remote actors.
-  In the case of a local actor reference, the named actor needs to exist before the
-  lookup, or else the acquired reference will be an :class:`EmptyLocalActorRef`.
-  This will be true even if an actor with that exact path is created after acquiring
-  the actor reference. For remote actor references acquired with `actorFor` the
-  behaviour is different and sending messages to such a reference will under the hood
-  look up the actor by path on the remote system for every message send.
 
 Messages and immutability
 =========================

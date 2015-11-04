@@ -33,7 +33,7 @@ This is a schematic overview of the test conductor.
 
 The test conductor server is responsible for coordinating barriers and sending commands to the test conductor
 clients that act upon them, e.g. throttling network traffic to/from another client. More information on the
-possible operations is availible in the ``akka.remote.testconductor.Conductor`` API documentation.
+possible operations is available in the ``akka.remote.testconductor.Conductor`` API documentation.
 
 The Multi Node Spec
 ===================
@@ -172,7 +172,7 @@ The multi node testing kit is a separate jar file. Make sure that you have the f
   "com.typesafe.akka" %% "akka-multi-node-testkit" % "@version@" @crossString@
 
 If you are using the latest nightly build you should pick a timestamped Akka version from
-`<https://repo.typesafe.com/typesafe/snapshots/com/typesafe/akka/akka-multi-node-testkit_@binVersion@/>`_.
+`<http://repo.akka.io/snapshots/com/typesafe/akka/akka-multi-node-testkit_@binVersion@/>`_.
 We recommend against using ``SNAPSHOT`` in order to obtain stable builds.
 
 A Multi Node Testing Example

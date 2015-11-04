@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.remote.transport
 
@@ -111,7 +111,8 @@ class TestTransport(
     (_) ⇒ registry.logActivity(ShutdownAttempt(localAddress)))
 
   override def listen: Future[(Address, Promise[AssociationEventListener])] = listenBehavior(())
-  override def boundAddress = localAddress
+  // Need to do like this for binary compatibility reasons
+  private[akka] def boundAddress = localAddress
   override def associate(remoteAddress: Address): Future[AssociationHandle] = associateBehavior(remoteAddress)
   override def shutdown(): Future[Boolean] = shutdownBehavior(())
 
@@ -188,11 +189,11 @@ object TestTransport {
    * @param logCallback
    *   Function that will be called independently of the current active behavior
    *
-   * @tparam A
-   *   Parameter type of the wrapped function. If it takes multiple parameters it must be wrapped in a tuple.
+   * type parameter A:
+   *  - Parameter type of the wrapped function. If it takes multiple parameters it must be wrapped in a tuple.
    *
-   * @tparam B
-   *   Type parameter of the future that the original function returns.
+   * type parameter B:
+   *  - Type parameter of the future that the original function returns.
    */
   class SwitchableLoggedBehavior[A, B](defaultBehavior: Behavior[A, B], logCallback: (A) ⇒ Unit) extends Behavior[A, B] {
 

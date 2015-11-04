@@ -1,14 +1,15 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.actor
 
 import akka.AkkaException
+import akka.event.LoggingAdapter
+
 import scala.annotation.tailrec
 import scala.beans.BeanProperty
 import scala.util.control.NoStackTrace
-import akka.event.LoggingAdapter
 
 /**
  * INTERNAL API
@@ -28,7 +29,7 @@ trait PossiblyHarmful
  */
 trait NoSerializationVerificationNeeded
 
-abstract class PoisonPill extends AutoReceivedMessage with PossiblyHarmful
+abstract class PoisonPill extends AutoReceivedMessage with PossiblyHarmful with DeadLetterSuppression
 
 /**
  * A message all Actors will understand, that when processed will terminate the Actor permanently.
@@ -95,7 +96,8 @@ final case class ActorIdentity(correlationId: Any, ref: Option[ActorRef]) {
 @SerialVersionUID(1L)
 final case class Terminated private[akka] (@BeanProperty actor: ActorRef)(
   @BeanProperty val existenceConfirmed: Boolean,
-  @BeanProperty val addressTerminated: Boolean) extends AutoReceivedMessage with PossiblyHarmful
+  @BeanProperty val addressTerminated: Boolean)
+  extends AutoReceivedMessage with PossiblyHarmful with DeadLetterSuppression
 
 /**
  * INTERNAL API
@@ -107,7 +109,8 @@ final case class Terminated private[akka] (@BeanProperty actor: ActorRef)(
  * and translates this event to [[akka.actor.Terminated]], which is sent itself.
  */
 @SerialVersionUID(1L)
-private[akka] final case class AddressTerminated(address: Address) extends AutoReceivedMessage with PossiblyHarmful
+private[akka] final case class AddressTerminated(address: Address)
+  extends AutoReceivedMessage with PossiblyHarmful with DeadLetterSuppression
 
 abstract class ReceiveTimeout extends PossiblyHarmful
 
@@ -339,6 +342,15 @@ object Actor {
   }
 
   /**
+   * ignoringBehavior is a Receive-expression that consumes and ignores all messages.
+   */
+  @SerialVersionUID(1L)
+  object ignoringBehavior extends Receive {
+    def isDefinedAt(x: Any): Boolean = true
+    def apply(x: Any): Unit = ()
+  }
+
+  /**
    * Default placeholder (null) used for "!" to indicate that there is no sender of the message,
    * that will be translated to the receiving system's deadLetters.
    */
@@ -398,8 +410,6 @@ object Actor {
  * the name-space clean.
  */
 trait Actor {
-
-  import Actor._
 
   // to make type Receive known in subclasses without import
   type Receive = Actor.Receive

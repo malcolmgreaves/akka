@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.actor
@@ -254,7 +254,7 @@ private[akka] trait Cell {
    * Returns “true” if the actor is locally known to be terminated, “false” if
    * alive or uncertain.
    */
-  def isTerminated: Boolean
+  private[akka] def isTerminated: Boolean
   /**
    * The supervisor of this actor.
    */

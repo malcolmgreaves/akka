@@ -1,25 +1,23 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.dispatch
 
 import java.util.concurrent._
-import akka.event.Logging.{ Debug, Error, LogEventException }
+import java.{ util ⇒ ju }
+
 import akka.actor._
 import akka.dispatch.sysmsg._
 import akka.event.EventStream
-import com.typesafe.config.{ ConfigFactory, Config }
-import akka.util.{ Unsafe, Index }
+import akka.event.Logging.{ Debug, Error, LogEventException }
+import akka.util.{ Index, Unsafe }
+import com.typesafe.config.Config
 import scala.annotation.tailrec
-import scala.concurrent.forkjoin.{ ForkJoinTask, ForkJoinPool, ForkJoinWorkerThread }
-import scala.concurrent.duration.Duration
-import scala.concurrent.ExecutionContext
-import scala.concurrent.ExecutionContextExecutor
-import scala.concurrent.duration.FiniteDuration
+import scala.concurrent.{ ExecutionContext, ExecutionContextExecutor }
+import scala.concurrent.duration.{ Duration, FiniteDuration }
+import scala.concurrent.forkjoin.{ ForkJoinPool, ForkJoinTask }
 import scala.util.control.NonFatal
-import scala.util.Try
-import java.{ util ⇒ ju }
 
 final case class Envelope private (val message: Any, val sender: ActorRef)
 
@@ -84,8 +82,8 @@ private[akka] object MessageDispatcher {
 
 abstract class MessageDispatcher(val configurator: MessageDispatcherConfigurator) extends AbstractMessageDispatcher with BatchingExecutor with ExecutionContextExecutor {
 
-  import MessageDispatcher._
   import AbstractMessageDispatcher.{ inhabitantsOffset, shutdownScheduleOffset }
+  import MessageDispatcher._
   import configurator.prerequisites
 
   val mailboxes = prerequisites.mailboxes
@@ -375,18 +373,18 @@ object ForkJoinExecutorConfigurator {
    */
   final class AkkaForkJoinPool(parallelism: Int,
                                threadFactory: ForkJoinPool.ForkJoinWorkerThreadFactory,
-                               unhandledExceptionHandler: Thread.UncaughtExceptionHandler)
-    extends ForkJoinPool(parallelism, threadFactory, unhandledExceptionHandler, true) with LoadMetrics {
-    override def execute(r: Runnable): Unit = {
-      if (r eq null) throw new NullPointerException("The Runnable must not be null")
-      val task =
-        if (r.isInstanceOf[ForkJoinTask[_]]) r.asInstanceOf[ForkJoinTask[Any]]
-        else new AkkaForkJoinTask(r)
-      Thread.currentThread match {
-        case worker: ForkJoinWorkerThread if worker.getPool eq this ⇒ task.fork()
-        case _ ⇒ super.execute(task)
-      }
-    }
+                               unhandledExceptionHandler: Thread.UncaughtExceptionHandler,
+                               asyncMode: Boolean)
+    extends ForkJoinPool(parallelism, threadFactory, unhandledExceptionHandler, asyncMode) with LoadMetrics {
+    def this(parallelism: Int,
+             threadFactory: ForkJoinPool.ForkJoinWorkerThreadFactory,
+             unhandledExceptionHandler: Thread.UncaughtExceptionHandler) = this(parallelism, threadFactory, unhandledExceptionHandler, asyncMode = true)
+
+    override def execute(r: Runnable): Unit =
+      if (r ne null)
+        super.execute((if (r.isInstanceOf[ForkJoinTask[_]]) r else new AkkaForkJoinTask(r)).asInstanceOf[ForkJoinTask[Any]])
+      else
+        throw new NullPointerException("Runnable was null")
 
     def atFullThrottle(): Boolean = this.getActiveThreadCount() >= this.getParallelism()
   }
@@ -422,9 +420,12 @@ class ForkJoinExecutorConfigurator(config: Config, prerequisites: DispatcherPrer
   }
 
   class ForkJoinExecutorServiceFactory(val threadFactory: ForkJoinPool.ForkJoinWorkerThreadFactory,
-                                       val parallelism: Int) extends ExecutorServiceFactory {
-    def createExecutorService: ExecutorService = new AkkaForkJoinPool(parallelism, threadFactory, MonitorableThreadFactory.doNothing)
+                                       val parallelism: Int,
+                                       val asyncMode: Boolean) extends ExecutorServiceFactory {
+    def this(threadFactory: ForkJoinPool.ForkJoinWorkerThreadFactory, parallelism: Int) = this(threadFactory, parallelism, asyncMode = true)
+    def createExecutorService: ExecutorService = new AkkaForkJoinPool(parallelism, threadFactory, MonitorableThreadFactory.doNothing, asyncMode)
   }
+
   final def createExecutorServiceFactory(id: String, threadFactory: ThreadFactory): ExecutorServiceFactory = {
     val tf = threadFactory match {
       case m: MonitorableThreadFactory ⇒
@@ -432,12 +433,20 @@ class ForkJoinExecutorConfigurator(config: Config, prerequisites: DispatcherPrer
         m.withName(m.name + "-" + id)
       case other ⇒ other
     }
+
+    val asyncMode = config.getString("task-peeking-mode") match {
+      case "FIFO"      ⇒ true
+      case "LIFO"      ⇒ false
+      case unsupported ⇒ throw new IllegalArgumentException(s"""Cannot instantiate ForkJoinExecutorServiceFactory. "task-peeking-mode" in "fork-join-executor" section could only set to "FIFO" or "LIFO".""")
+    }
+
     new ForkJoinExecutorServiceFactory(
       validate(tf),
       ThreadPoolConfig.scaledPoolSize(
         config.getInt("parallelism-min"),
         config.getDouble("parallelism-factor"),
-        config.getInt("parallelism-max")))
+        config.getInt("parallelism-max")),
+      asyncMode)
   }
 }
 

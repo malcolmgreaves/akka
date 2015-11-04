@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.persistence.journal.leveldb
@@ -7,6 +7,7 @@ package akka.persistence.journal.leveldb
 import org.iq80.leveldb.DBIterator
 
 import akka.actor.Actor
+import akka.util.ByteString.UTF_8
 
 /**
  * INTERNAL API.
@@ -38,7 +39,7 @@ private[persistence] trait LeveldbIdMapping extends Actor { this: LeveldbStore â
       val nextEntry = iter.next()
       val nextKey = keyFromBytes(nextEntry.getKey)
       if (!isMappingKey(nextKey)) pathMap else {
-        val nextVal = new String(nextEntry.getValue, "UTF-8")
+        val nextVal = new String(nextEntry.getValue, UTF_8)
         readIdMap(pathMap + (nextVal -> nextKey.mappingId), iter)
       }
     }
@@ -46,7 +47,7 @@ private[persistence] trait LeveldbIdMapping extends Actor { this: LeveldbStore â
 
   private def writeIdMapping(id: String, numericId: Int): Int = {
     idMap = idMap + (id -> numericId)
-    leveldb.put(keyToBytes(mappingKey(numericId)), id.getBytes("UTF-8"))
+    leveldb.put(keyToBytes(mappingKey(numericId)), id.getBytes(UTF_8))
     numericId
   }
 

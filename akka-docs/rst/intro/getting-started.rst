@@ -4,8 +4,10 @@ Getting Started
 Prerequisites
 -------------
 
-Akka requires that you have `Java 1.6 <http://www.oracle.com/technetwork/java/javase/downloads/index.html>`_ or
+Akka requires that you have `Java 8 <http://www.oracle.com/technetwork/java/javase/downloads/index.html>`_ or
 later installed on you machine.
+
+`Typesafe <http://www.typesafe.com>`_ provides versions of Akka that are compatible with Java 6, 7 and 8.
 
 Getting Started Guides and Template Projects
 --------------------------------------------
@@ -17,9 +19,8 @@ Download
 --------
 
 There are several ways to download Akka. You can download it as part of the Typesafe Platform
-(as described above). You can download the full distribution with microkernel, which includes
-all modules. Or you can use a build tool like Maven or SBT to download dependencies from the
-Akka Maven repository.
+(as described above). You can download the full distribution, which includes all modules. 
+Or you can use a build tool like Maven or SBT to download dependencies from the Akka Maven repository.
 
 Modules
 -------
@@ -34,11 +35,7 @@ Akka is very modular and consists of several JARs containing different features.
 
 - ``akka-cluster`` – Cluster membership management, elastic routers.
 
-- ``akka-kernel`` – Akka microkernel for running a bare-bones mini application
-  server
-
-- ``akka-osgi`` – base bundle for using Akka in OSGi containers, containing the
-  ``akka-actor`` classes
+- ``akka-osgi`` – utilities for using Akka in OSGi containers
 
 - ``akka-osgi-aries`` – Aries blueprint for provisioning actor systems
 
@@ -74,23 +71,11 @@ Using a snapshot version
 
 The Akka nightly snapshots are published to http://repo.akka.io/snapshots/ and are
 versioned with both ``SNAPSHOT`` and timestamps. You can choose a timestamped
-version to work with and can decide when to update to a newer version. The Akka
-snapshots repository is also proxied through https://repo.typesafe.com/typesafe/snapshots/
-which includes proxies for several other repositories that Akka modules depend on.
+version to work with and can decide when to update to a newer version.
 
 .. warning::
 
   The use of Akka SNAPSHOTs, nightlies and milestone releases is discouraged unless you know what you are doing.
-
-Microkernel
------------
-
-The Akka distribution includes the microkernel. To run the microkernel put your
-application jar in the ``deploy`` directory and use the scripts in the ``bin``
-directory.
-
-More information is available in the documentation of the
-:ref:`Microkernel (Scala) <microkernel-scala>` / :ref:`Microkernel (Java) <microkernel-java>`.
 
 .. _build-tool:
 
@@ -109,7 +94,6 @@ For Akka version 2.1-M2 and onwards:
 For previous Akka versions:
 
 `Akka Repo <http://repo.akka.io/releases/>`_
-`Typesafe Repo <https://repo.typesafe.com/typesafe/releases/>`_
 
 Using Akka with Maven
 ---------------------

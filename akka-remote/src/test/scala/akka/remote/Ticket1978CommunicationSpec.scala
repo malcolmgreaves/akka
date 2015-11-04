@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.remote
 
@@ -99,14 +99,14 @@ class Ticket1978AES128CounterSecureRNGSpec extends Ticket1978CommunicationSpec(g
 class Ticket1978AES256CounterSecureRNGSpec extends Ticket1978CommunicationSpec(getCipherConfig("AES256CounterSecureRNG", "TLS_RSA_WITH_AES_128_CBC_SHA", "TLS_RSA_WITH_AES_256_CBC_SHA"))
 
 /**
- * Both of the <quote>Inet</quote> variants require access to the Internet to access random.org.
+ * Both of the `Inet` variants require access to the Internet to access random.org.
  */
 @org.junit.runner.RunWith(classOf[org.scalatest.junit.JUnitRunner])
 class Ticket1978AES128CounterInetRNGSpec extends Ticket1978CommunicationSpec(getCipherConfig("AES128CounterInetRNG", "TLS_RSA_WITH_AES_128_CBC_SHA"))
   with InetRNGSpec
 
 /**
- * Both of the <quote>Inet</quote> variants require access to the Internet to access random.org.
+ * Both of the `Inet` variants require access to the Internet to access random.org.
  */
 @org.junit.runner.RunWith(classOf[org.scalatest.junit.JUnitRunner])
 class Ticket1978AES256CounterInetRNGSpec extends Ticket1978CommunicationSpec(getCipherConfig("AES256CounterInetRNG", "TLS_RSA_WITH_AES_256_CBC_SHA"))
@@ -173,7 +173,7 @@ abstract class Ticket1978CommunicationSpec(val cipherConfig: CipherConfig) exten
         }
 
         val f = for (i ← 1 to 1000) yield here ? (("ping", i)) mapTo classTag[((String, Int), ActorRef)]
-        Await.result(Future.sequence(f), remaining).map(_._1._1).toSet should be(Set("pong"))
+        Await.result(Future.sequence(f), remaining).map(_._1._1).toSet should ===(Set("pong"))
       }
 
     } else {

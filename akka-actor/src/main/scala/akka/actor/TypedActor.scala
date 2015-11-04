@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.actor
 
@@ -138,7 +138,7 @@ object TypedActor extends ExtensionId[TypedActorExtension] with ExtensionIdProvi
     /**
      * Invokes the Method on the supplied instance
      *
-     * @throws the underlying exception if there's an InvocationTargetException thrown on the invocation
+     * Throws the underlying exception if there's an InvocationTargetException thrown on the invocation.
      */
     def apply(instance: AnyRef): AnyRef = try {
       parameters match {
@@ -217,8 +217,9 @@ object TypedActor extends ExtensionId[TypedActorExtension] with ExtensionIdProvi
    *
    * NEVER EXPOSE "this" to someone else, always use "self[TypeOfInterface(s)]"
    *
-   * @throws IllegalStateException if called outside of the scope of a method on this TypedActor
-   * @throws ClassCastException if the supplied type T isn't the type of the proxy associated with this TypedActor
+   * Throws IllegalStateException if called outside of the scope of a method on this TypedActor.
+   *
+   * Throws ClassCastException if the supplied type T isn't the type of the proxy associated with this TypedActor.
    */
   def self[T <: AnyRef] = selfReference.get.asInstanceOf[T] match {
     case null ⇒ throw new IllegalStateException("Calling TypedActor.self outside of a TypedActor implementation method!")
@@ -293,7 +294,7 @@ object TypedActor extends ExtensionId[TypedActorExtension] with ExtensionIdProvi
       }
     }
 
-    protected def withContext[T](unitOfWork: ⇒ T): T = {
+    protected def withContext[U](unitOfWork: ⇒ U): U = {
       TypedActor.selfReference set proxyVar.get
       TypedActor.currentContext set context
       try unitOfWork finally {

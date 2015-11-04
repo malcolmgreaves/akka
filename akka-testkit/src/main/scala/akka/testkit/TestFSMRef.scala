@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 
 package akka.testkit
@@ -62,7 +62,7 @@ class TestFSMRef[S, D, T <: Actor](
    * and stop handling.
    */
   def setState(stateName: S = fsm.stateName, stateData: D = fsm.stateData, timeout: FiniteDuration = null, stopReason: Option[FSM.Reason] = None) {
-    fsm.applyState(FSM.State(stateName, stateData, Option(timeout), stopReason)())
+    fsm.applyState(FSM.State(stateName, stateData, Option(timeout), stopReason))
   }
 
   /**

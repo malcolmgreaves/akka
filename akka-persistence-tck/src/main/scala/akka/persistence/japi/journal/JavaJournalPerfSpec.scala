@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2014-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.persistence.japi.journal
 
@@ -43,7 +43,7 @@ import org.scalatest.junit.JUnitRunner
  * @param config configures the Journal plugin to be tested
  */
 @RunWith(classOf[JUnitRunner])
-class JavaJournalPerfSpec(val config: Config) extends JournalSpec with JournalPerfSpec {
+class JavaJournalPerfSpec(config: Config) extends JournalPerfSpec(config) {
   override protected def info: Informer = new Informer {
     override def apply(message: String, payload: Option[Any]): Unit = System.out.println(message)
   }

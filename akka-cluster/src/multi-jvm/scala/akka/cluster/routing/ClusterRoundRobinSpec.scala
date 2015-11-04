@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.cluster.routing
 
@@ -132,18 +132,18 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
     Await.result(router ? GetRoutees, timeout.duration).asInstanceOf[Routees].routees
 
   "A cluster router with a RoundRobin router" must {
-    "start cluster with 2 nodes" taggedAs LongRunningTest in {
+    "start cluster with 2 nodes" in {
       awaitClusterUp(first, second)
       enterBarrier("after-1")
     }
 
-    "deploy routees to the member nodes in the cluster" taggedAs LongRunningTest in {
+    "deploy routees to the member nodes in the cluster" in {
 
       runOn(first) {
-        router1.isInstanceOf[RoutedActorRef] should be(true)
+        router1.isInstanceOf[RoutedActorRef] should ===(true)
 
         // max-nr-of-instances-per-node=2 times 2 nodes
-        awaitAssert(currentRoutees(router1).size should be(4))
+        awaitAssert(currentRoutees(router1).size should ===(4))
 
         val iterationCount = 10
         for (i ← 0 until iterationCount) {
@@ -154,15 +154,15 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
 
         replies(first) should be > (0)
         replies(second) should be > (0)
-        replies(third) should be(0)
-        replies(fourth) should be(0)
-        replies.values.sum should be(iterationCount)
+        replies(third) should ===(0)
+        replies(fourth) should ===(0)
+        replies.values.sum should ===(iterationCount)
       }
 
       enterBarrier("after-2")
     }
 
-    "lookup routees on the member nodes in the cluster" taggedAs LongRunningTest in {
+    "lookup routees on the member nodes in the cluster" in {
 
       // cluster consists of first and second
 
@@ -173,7 +173,7 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
       runOn(first) {
         // 2 nodes, 2 routees on each node
         within(10.seconds) {
-          awaitAssert(currentRoutees(router4).size should be(4))
+          awaitAssert(currentRoutees(router4).size should ===(4))
         }
 
         val iterationCount = 10
@@ -185,22 +185,22 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
 
         replies(first) should be > (0)
         replies(second) should be > (0)
-        replies(third) should be(0)
-        replies(fourth) should be(0)
-        replies.values.sum should be(iterationCount)
+        replies(third) should ===(0)
+        replies(fourth) should ===(0)
+        replies.values.sum should ===(iterationCount)
       }
 
       enterBarrier("after-3")
     }
 
-    "deploy routees to new nodes in the cluster" taggedAs LongRunningTest in {
+    "deploy routees to new nodes in the cluster" in {
 
       // add third and fourth
       awaitClusterUp(first, second, third, fourth)
 
       runOn(first) {
         // max-nr-of-instances-per-node=2 times 4 nodes
-        awaitAssert(currentRoutees(router1).size should be(8))
+        awaitAssert(currentRoutees(router1).size should ===(8))
 
         val iterationCount = 10
         for (i ← 0 until iterationCount) {
@@ -210,19 +210,19 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
         val replies = receiveReplies(PoolRoutee, iterationCount)
 
         replies.values.foreach { _ should be > (0) }
-        replies.values.sum should be(iterationCount)
+        replies.values.sum should ===(iterationCount)
       }
 
       enterBarrier("after-4")
     }
 
-    "lookup routees on new nodes in the cluster" taggedAs LongRunningTest in {
+    "lookup routees on new nodes in the cluster" in {
 
       // cluster consists of first, second, third and fourth
 
       runOn(first) {
         // 4 nodes, 2 routee on each node
-        awaitAssert(currentRoutees(router4).size should be(8))
+        awaitAssert(currentRoutees(router4).size should ===(8))
 
         val iterationCount = 10
         for (i ← 0 until iterationCount) {
@@ -232,17 +232,17 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
         val replies = receiveReplies(GroupRoutee, iterationCount)
 
         replies.values.foreach { _ should be > (0) }
-        replies.values.sum should be(iterationCount)
+        replies.values.sum should ===(iterationCount)
       }
 
       enterBarrier("after-5")
     }
 
-    "deploy routees to only remote nodes when allow-local-routees = off" taggedAs LongRunningTest in {
+    "deploy routees to only remote nodes when allow-local-routees = off" in {
 
       runOn(first) {
         // max-nr-of-instances-per-node=1 times 3 nodes
-        awaitAssert(currentRoutees(router3).size should be(3))
+        awaitAssert(currentRoutees(router3).size should ===(3))
 
         val iterationCount = 10
         for (i ← 0 until iterationCount) {
@@ -251,20 +251,20 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
 
         val replies = receiveReplies(PoolRoutee, iterationCount)
 
-        replies(first) should be(0)
+        replies(first) should ===(0)
         replies(second) should be > (0)
         replies(third) should be > (0)
         replies(fourth) should be > (0)
-        replies.values.sum should be(iterationCount)
+        replies.values.sum should ===(iterationCount)
       }
 
       enterBarrier("after-6")
     }
 
-    "deploy routees to specified node role" taggedAs LongRunningTest in {
+    "deploy routees to specified node role" in {
 
       runOn(first) {
-        awaitAssert(currentRoutees(router5).size should be(2))
+        awaitAssert(currentRoutees(router5).size should ===(2))
 
         val iterationCount = 10
         for (i ← 0 until iterationCount) {
@@ -275,21 +275,21 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
 
         replies(first) should be > (0)
         replies(second) should be > (0)
-        replies(third) should be(0)
-        replies(fourth) should be(0)
-        replies.values.sum should be(iterationCount)
+        replies(third) should ===(0)
+        replies(fourth) should ===(0)
+        replies.values.sum should ===(iterationCount)
       }
 
       enterBarrier("after-7")
     }
 
-    "deploy programatically defined routees to the member nodes in the cluster" taggedAs LongRunningTest in {
+    "deploy programatically defined routees to the member nodes in the cluster" in {
 
       runOn(first) {
-        router2.isInstanceOf[RoutedActorRef] should be(true)
+        router2.isInstanceOf[RoutedActorRef] should ===(true)
 
         // totalInstances = 3, maxInstancesPerNode = 1
-        awaitAssert(currentRoutees(router2).size should be(3))
+        awaitAssert(currentRoutees(router2).size should ===(3))
 
         val iterationCount = 10
         for (i ← 0 until iterationCount) {
@@ -302,14 +302,14 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
         val routees = currentRoutees(router2)
         val routeeAddresses = routees map { case ActorRefRoutee(ref) ⇒ fullAddress(ref) }
 
-        routeeAddresses.size should be(3)
-        replies.values.sum should be(iterationCount)
+        routeeAddresses.size should ===(3)
+        replies.values.sum should ===(iterationCount)
       }
 
       enterBarrier("after-8")
     }
 
-    "remove routees for unreachable nodes, and add when reachable again" taggedAs LongRunningTest in within(30.seconds) {
+    "remove routees for unreachable nodes, and add when reachable again" in within(30.seconds) {
 
       // myservice is already running
 
@@ -318,15 +318,15 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
 
       runOn(first) {
         // 4 nodes, 2 routees on each node
-        awaitAssert(currentRoutees(router4).size should be(8))
+        awaitAssert(currentRoutees(router4).size should ===(8))
 
         testConductor.blackhole(first, second, Direction.Both).await
 
-        awaitAssert(routees.size should be(6))
+        awaitAssert(routees.size should ===(6))
         routeeAddresses should not contain (address(second))
 
         testConductor.passThrough(first, second, Direction.Both).await
-        awaitAssert(routees.size should be(8))
+        awaitAssert(routees.size should ===(8))
         routeeAddresses should contain(address(second))
 
       }
@@ -334,7 +334,7 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
       enterBarrier("after-9")
     }
 
-    "deploy programatically defined routees to other node when a node becomes down" taggedAs LongRunningTest in {
+    "deploy programatically defined routees to other node when a node becomes down" in {
       muteMarkingAsUnreachable()
 
       runOn(first) {
@@ -349,7 +349,7 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
         }.get
 
         cluster.down(downAddress)
-        expectMsgType[Terminated](15.seconds).actor should be(downRouteeRef)
+        expectMsgType[Terminated](15.seconds).actor should ===(downRouteeRef)
         awaitAssert {
           routeeAddresses should contain(notUsedAddress)
           routeeAddresses should not contain (downAddress)
@@ -362,8 +362,8 @@ abstract class ClusterRoundRobinSpec extends MultiNodeSpec(ClusterRoundRobinMult
 
         val replies = receiveReplies(PoolRoutee, iterationCount)
 
-        routeeAddresses.size should be(3)
-        replies.values.sum should be(iterationCount)
+        routeeAddresses.size should ===(3)
+        replies.values.sum should ===(iterationCount)
       }
 
       enterBarrier("after-10")

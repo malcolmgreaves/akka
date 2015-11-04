@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package docs.actor;
 
@@ -534,6 +534,31 @@ public class UntypedActorDocTest {
     system.actorOf(DemoActor.props(42), "demo");
     //#props-factory
   }
+
+  static
+  //#messages-in-companion
+  public class DemoMessagesActor extends UntypedActor {
+
+    static public class Greeting {
+      private final String from;
+
+      public Greeting(String from) {
+        this.from = from;
+      }
+
+      public String getGreeter() {
+        return from;
+      }
+    }
+
+    public void onReceive(Object message) throws Exception {
+      if (message instanceof Greeting) {
+        getSender().tell("Hello " + ((Greeting) message).getGreeter(), getSelf());
+      } else
+        unhandled(message);
+    }
+  }
+  //#messages-in-companion
 
   public static class MyActor extends UntypedActor {
 

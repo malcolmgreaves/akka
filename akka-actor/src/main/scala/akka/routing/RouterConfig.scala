@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2009-2014 Typesafe Inc. <http://www.typesafe.com>
+ * Copyright (C) 2009-2015 Typesafe Inc. <http://www.typesafe.com>
  */
 package akka.routing
 
@@ -176,6 +176,9 @@ abstract class PoolBase extends Pool
  * them from the router if they terminate.
  */
 trait Pool extends RouterConfig {
+
+  @deprecated("Implement nrOfInstances with ActorSystem parameter instead", "2.4")
+  def nrOfInstances: Int = -1
 
   /**
    * Initial number of routee instances

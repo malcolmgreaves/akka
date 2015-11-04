@@ -4,7 +4,7 @@
 
 * [Akka Contributor License Agreement](http://www.typesafe.com/contribute/cla)
 * [Akka Issue Tracker](http://doc.akka.io/docs/akka/current/project/issue-tracking.html)
-* [Scalariform](https://github.com/mdr/scalariform)
+* [Scalariform](https://github.com/daniel-trinh/scalariform)
 
 # Typesafe Project & Developer Guidelines
 
@@ -61,7 +61,7 @@ For a Pull Request to be considered at all it has to meet these requirements:
 
     Other guidelines to follow for copyright notices:
 
-    - Use a form of ``Copyright (C) 2011-2013 Typesafe Inc. <http://www.typesafe.com>``, where the start year is when the project or file was first created and the end year is the last time the project or file was modified.
+    - Use a form of ``Copyright (C) 2011-2015 Typesafe Inc. <http://www.typesafe.com>``, where the start year is when the project or file was first created and the end year is the last time the project or file was modified.
     - Never delete or change existing copyright notices, just add additional info.  
     - Do not use ``@author`` tags since it does not encourage [Collective Code Ownership](http://www.extremeprogramming.org/rules/collective.html). However, each project should make sure that the contributors gets the credit they deserve—in a text file or page on the project website and in the release notes etc.
 
@@ -144,15 +144,27 @@ Example:
 ## How To Enforce These Guidelines?
 
 ### Make Use of Pull Request Validator
-Akka uses [Jenkins GitHub pull request builder plugin](https://wiki.jenkins-ci.org/display/JENKINS/GitHub+pull+request+builder+plugin) that automatically merges the code, builds it, runs the tests and comments on the Pull Request in GitHub.
+Akka uses [Jenkins GitHub pull request builder plugin](https://wiki.jenkins-ci.org/display/JENKINS/GitHub+pull+request+builder+plugin) 
+that automatically merges the code, builds it, runs the tests and comments on the Pull Request in GitHub.
 
 Upon a submission of a Pull Request the Github pull request builder plugin will post a following comment:
 
     Can one of the repo owners verify this patch?
 
-This requires a member from a core team to start Pull Request validation process by posting comment consisting only of `OK TO TEST`. From now on, whenever new commits are pushed to the Pull Request, a validation job will be automaticaly started and the results of the validation posted to the Pull Request.
+This requires a member from a core team to start Pull Request validation process by posting comment consisting only of `OK TO TEST`. 
+From now on, whenever new commits are pushed to the Pull Request, a validation job will be automaticaly started and the results of the validation posted to the Pull Request.
 
 A Pull Request validation job can be started manually by posting `PLS BUILD` comment on the Pull Request.
+
+In order to speed up PR validation times, the Akka build contains a special sbt task called `validatePullRequest`,
+which is smart enough to figure out which projects should be built if a PR only has changes in some parts of the project.
+For example, if your PR only touches `akka-persistence`, no `akka-remote` tests need to be run, however the task
+will validate all projects that depend on `akka-persistence` (including samples). 
+Also, tests tagged as `PerformanceTest` and the likes of it are excluded from PR validation.
+
+In order to force the `validatePullRequest` task to build the entire project, regardless of dependency analysis of a PRs 
+changes one can use the special `PLS BUILD ALL` command (typed in a comment on github, on the Pull Request), which will cause
+the validator to test all projects.
 
 ## Source style
 
